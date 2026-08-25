@@ -341,6 +341,7 @@ table inet filter {
 
         # Docker Compose uses dynamic bridge names. Allow bridge forwarding so
         # image builds, container egress, and published web ports can work.
+        ip saddr 172.16.0.0/12 accept
         iifname "docker0" accept
         oifname "docker0" accept
         iifname "br-*" accept
@@ -356,6 +357,11 @@ EOF
     nft -c -f "${NFTABLES_CONF}"
     nft -f "${NFTABLES_CONF}"
     systemctl restart nftables
+
+    if systemctl is-active --quiet docker 2>/dev/null; then
+        systemctl restart docker
+        ok "Docker restarted so managed bridge/NAT rules are recreated."
+    fi
 
     ok "nftables configured: inbound ${SSH_PORT}, 80, and 443 allowed."
 }

@@ -187,7 +187,8 @@ As of 2026-08-25:
   - `443/tcp` for HTTPS.
 - Outbound traffic should be allowed.
 - Because password-based SSH remains enabled, fail2ban is required.
-- Docker bridge forwarding must be allowed in nftables. A default-drop forward chain without Docker bridge rules blocks Docker image builds and container network egress.
+- Docker bridge/private-subnet forwarding must be allowed in nftables. A default-drop forward chain without Docker rules blocks Docker image builds and container network egress.
+- After nftables reloads with `flush ruleset`, Docker must be restarted so Docker recreates its managed bridge/NAT rules.
 
 ## SSH Policy Decision
 
@@ -274,7 +275,7 @@ Implement the first milestone by creating the Docker Compose service layout and 
   - unattended security upgrades configured.
   - `/dev/shm` hardened.
 - Real `.env` exists only on the VPS at `/opt/1upmoodleserve/.env`; secrets must not be committed or written into memory.
-- First deploy attempt reached Moodle image build but container package downloads could not reach Debian mirrors because nftables forward policy blocked Docker bridge traffic. The hardening script now includes Docker bridge forwarding rules.
+- First deploy attempt reached Moodle image build but container package downloads could not reach Debian mirrors because nftables forward policy and flushed Docker NAT rules blocked container egress. The hardening script now includes Docker forwarding rules and restarts Docker after nftables reload.
 
 ## VPS Execution State
 
