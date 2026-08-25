@@ -253,3 +253,7 @@ Implement the first milestone by creating the Docker Compose service layout and 
   - Starts the HTTP bootstrap stack: PostgreSQL, Keycloak, Moodle, and Nginx.
   - Prints `docker compose ps`.
   - Does not configure HTTPS yet.
+- `scripts/verify-server.sh` has been created.
+- Current `verify-server.sh` behavior:
+  - Read-only server audit.
+  - Checks Ubuntu version, DNS, project path, `.env`, Docker, Compose config/status, SSH policy, nftables/fail2ban, unattended upgrades, sysctl basics, and `/dev/shm`.
