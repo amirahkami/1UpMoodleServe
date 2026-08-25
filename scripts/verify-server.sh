@@ -221,7 +221,7 @@ check_security_basics() {
 
     local ip_forward
     ip_forward="$(sysctl -n net.ipv4.ip_forward 2>/dev/null || true)"
-    [[ "${ip_forward}" == "0" ]] && pass "net.ipv4.ip_forward = 0" || warn "net.ipv4.ip_forward = ${ip_forward:-unknown}"
+    [[ "${ip_forward}" == "1" ]] && pass "net.ipv4.ip_forward = 1 for Docker networking" || warn "net.ipv4.ip_forward = ${ip_forward:-unknown}; Docker networking expects 1"
 
     if grep -q '/dev/shm.*noexec' /etc/fstab 2>/dev/null; then
         pass "/dev/shm noexec configured in fstab"

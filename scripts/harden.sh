@@ -255,7 +255,8 @@ net.ipv4.tcp_synack_retries = 2
 net.ipv4.tcp_syn_retries = 5
 net.ipv4.conf.all.log_martians = 1
 net.ipv4.conf.default.log_martians = 1
-net.ipv4.ip_forward = 0
+# Docker needs IPv4 forwarding for container networking.
+net.ipv4.ip_forward = 1
 kernel.randomize_va_space = 2
 fs.suid_dumpable = 0
 EOF

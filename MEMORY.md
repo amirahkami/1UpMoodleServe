@@ -257,3 +257,27 @@ Implement the first milestone by creating the Docker Compose service layout and 
 - Current `verify-server.sh` behavior:
   - Read-only server audit.
   - Checks Ubuntu version, DNS, project path, `.env`, Docker, Compose config/status, SSH policy, nftables/fail2ban, unattended upgrades, sysctl basics, and `/dev/shm`.
+
+## VPS Execution State
+
+- The public GitHub repository `dev` branch has been cloned on the VPS to `/opt/1upmoodleserve`.
+- Baseline `scripts/verify-server.sh` was run on the VPS before provisioning.
+- Baseline result:
+  - DNS passed for `unrealuni.xyz`, `moodle.unrealuni.xyz`, and `iam.unrealuni.xyz`.
+  - Project path and `docker-compose.yml` exist on the VPS.
+  - `.env` does not exist yet.
+  - Docker is not installed yet.
+  - SSH hardening has not run yet.
+  - fail2ban is not installed yet.
+  - nftables exists but project firewall rules are not configured yet.
+- `scripts/provision.sh` has been run successfully on the VPS.
+- Provisioning installed Docker Engine `29.7.2` and Docker Compose plugin `v5.5.0` from Docker's official apt repository.
+- Post-provision `scripts/verify-server.sh` result: 12 pass, 10 warnings, 0 failures.
+- Remaining post-provision warnings are expected before `.env` creation and hardening:
+  - `.env` missing.
+  - SSH hardening not run.
+  - fail2ban not installed.
+  - project nftables rules not configured.
+  - `/dev/shm` not hardened yet.
+- Docker set `net.ipv4.ip_forward = 1`; this is required for Docker container networking.
+- `scripts/harden.sh` and `scripts/verify-server.sh` were adjusted to treat `net.ipv4.ip_forward = 1` as the correct Docker-host state.
