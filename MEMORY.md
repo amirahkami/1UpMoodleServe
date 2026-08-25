@@ -109,9 +109,9 @@ As of 2026-08-25:
 - Current Git state: local `dev` branch exists and tracks `origin/dev`.
 - Initial commit on `dev`: `0b90590 chore: initialize deployment project`.
 - Existing durable context files: `PROJECT.md`, `techstack.md`, and this `MEMORY.md`.
-- `readme.md` is currently empty.
+- `readme.md` contains initial deployment documentation.
 - `docs/` and `runbooks/` currently contain no files.
-- The folder is not currently a Git repository.
+- The folder is a Git repository.
 
 ## VPS State
 
@@ -187,6 +187,7 @@ As of 2026-08-25:
   - `443/tcp` for HTTPS.
 - Outbound traffic should be allowed.
 - Because password-based SSH remains enabled, fail2ban is required.
+- Docker bridge forwarding must be allowed in nftables. A default-drop forward chain without Docker bridge rules blocks Docker image builds and container network egress.
 
 ## SSH Policy Decision
 
@@ -257,6 +258,23 @@ Implement the first milestone by creating the Docker Compose service layout and 
 - Current `verify-server.sh` behavior:
   - Read-only server audit.
   - Checks Ubuntu version, DNS, project path, `.env`, Docker, Compose config/status, SSH policy, nftables/fail2ban, unattended upgrades, sysctl basics, and `/dev/shm`.
+
+## VPS Execution Notes
+
+- The VPS was provisioned with Docker Engine and Docker Compose from Docker's official apt repository.
+- SSH hardening was applied:
+  - `underroot` exists and has sudo access.
+  - SSH listens on port `44422`.
+  - Direct root SSH is disabled.
+  - Password login remains enabled by project decision.
+- System hardening was applied:
+  - nftables default-deny inbound policy.
+  - inbound ports `44422`, `80`, and `443` allowed.
+  - fail2ban active for SSH.
+  - unattended security upgrades configured.
+  - `/dev/shm` hardened.
+- Real `.env` exists only on the VPS at `/opt/1upmoodleserve/.env`; secrets must not be committed or written into memory.
+- First deploy attempt reached Moodle image build but container package downloads could not reach Debian mirrors because nftables forward policy blocked Docker bridge traffic. The hardening script now includes Docker bridge forwarding rules.
 
 ## VPS Execution State
 

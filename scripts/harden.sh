@@ -335,7 +335,16 @@ table inet filter {
 
     chain forward {
         type filter hook forward priority 0; policy drop;
+
         ct state invalid drop
+        ct state established,related accept
+
+        # Docker Compose uses dynamic bridge names. Allow bridge forwarding so
+        # image builds, container egress, and published web ports can work.
+        iifname "docker0" accept
+        oifname "docker0" accept
+        iifname "br-*" accept
+        oifname "br-*" accept
     }
 
     chain output {

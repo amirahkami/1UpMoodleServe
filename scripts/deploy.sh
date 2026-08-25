@@ -82,7 +82,7 @@ compose_config() {
 build_images() {
     section "Build application images"
 
-    docker compose --env-file "${ENV_FILE}" build moodle
+    COMPOSE_PROGRESS=plain docker compose --env-file "${ENV_FILE}" build moodle
 
     ok "Application images built."
 }

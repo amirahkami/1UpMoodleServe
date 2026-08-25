@@ -202,6 +202,7 @@ check_firewall_and_fail2ban() {
         echo "${ruleset}" | grep -qE "tcp dport ${SSH_PORT}\b" && pass "nftables allows SSH ${SSH_PORT}/tcp" || warn "nftables SSH ${SSH_PORT}/tcp rule not detected"
         echo "${ruleset}" | grep -qE "tcp dport.*80" && pass "nftables allows HTTP 80/tcp" || warn "nftables HTTP 80/tcp rule not detected"
         echo "${ruleset}" | grep -qE "tcp dport.*443" && pass "nftables allows HTTPS 443/tcp" || warn "nftables HTTPS 443/tcp rule not detected"
+        echo "${ruleset}" | grep -qE 'iifname "br-\*"|oifname "br-\*"' && pass "nftables allows Docker Compose bridge forwarding" || warn "nftables Docker Compose bridge forwarding rule not detected"
     else
         warn "nft command not found; system hardening may not have run"
     fi
