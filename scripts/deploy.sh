@@ -53,7 +53,7 @@ require_env_file() {
 
     [[ -f "${ENV_FILE}" ]] || die "Missing ${ENV_FILE}. Copy .env.example to .env and fill real values on the VPS."
 
-    if grep -q 'CHANGE_ME' "${ENV_FILE}"; then
+    if grep -qE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=.*CHANGE_ME' "${ENV_FILE}"; then
         die "${ENV_FILE} still contains CHANGE_ME placeholders."
     fi
 

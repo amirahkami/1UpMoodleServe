@@ -100,7 +100,7 @@ check_project_path() {
 
     if [[ -f "${APP_DIR}/.env" ]]; then
         pass ".env exists in ${APP_DIR}"
-        if grep -q 'CHANGE_ME' "${APP_DIR}/.env"; then
+        if grep -qE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=.*CHANGE_ME' "${APP_DIR}/.env"; then
             fail ".env still contains CHANGE_ME placeholders"
         else
             pass ".env contains no CHANGE_ME placeholders"

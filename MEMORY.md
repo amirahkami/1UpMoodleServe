@@ -281,3 +281,21 @@ Implement the first milestone by creating the Docker Compose service layout and 
   - `/dev/shm` not hardened yet.
 - Docker set `net.ipv4.ip_forward = 1`; this is required for Docker container networking.
 - `scripts/harden.sh` and `scripts/verify-server.sh` were adjusted to treat `net.ipv4.ip_forward = 1` as the correct Docker-host state.
+- `scripts/harden.sh ssh-step1` has been run successfully on the VPS.
+- SSH as `underroot` on port `44422` has been verified successfully.
+- `scripts/harden.sh ssh-step2` has been run successfully on the VPS.
+- Direct root SSH is disabled.
+- SSH as `underroot` on port `44422` was re-verified after disabling root SSH.
+- Root SSH on port `44422` was checked and denied as expected.
+- `scripts/harden.sh system` has been run successfully on the VPS.
+- SSH as `underroot` on port `44422` was re-verified after firewall hardening.
+- Post-hardening `scripts/verify-server.sh` result: 25 pass, 2 warnings, 0 failures.
+- Remaining post-hardening warnings are expected until `.env` is created and the Compose stack is deployed:
+  - `.env` missing.
+  - Compose check skipped because `.env` is missing.
+- The VPS login banner reports that a system restart is required after package upgrades.
+- `/opt/1upmoodleserve` ownership has been changed to `underroot:underroot` for future Git pull/deploy operations.
+- `/opt/1upmoodleserve/.env` has been generated on the VPS with real secrets and file mode `600`.
+- Real `.env` values must not be committed or stored in project memory.
+- First verifier run after `.env` creation reported one failure because the placeholder check matched `CHANGE_ME` inside a comment.
+- `scripts/deploy.sh` and `scripts/verify-server.sh` have been fixed so placeholder detection only checks active env assignment lines, not comments.
