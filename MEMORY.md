@@ -106,6 +106,8 @@ As of 2026-08-25:
 - GitHub repository: `https://github.com/amirahkami/1UpMoodleServe`.
 - GitHub repository visibility: public.
 - Branch policy: `dev` is for development, `main` is for deployment.
+- Current Git state: local `dev` branch exists and tracks `origin/dev`.
+- Initial commit on `dev`: `0b90590 chore: initialize deployment project`.
 - Existing durable context files: `PROJECT.md`, `techstack.md`, and this `MEMORY.md`.
 - `readme.md` is currently empty.
 - `docs/` and `runbooks/` currently contain no files.
