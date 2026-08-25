@@ -299,3 +299,9 @@ Implement the first milestone by creating the Docker Compose service layout and 
 - Real `.env` values must not be committed or stored in project memory.
 - First verifier run after `.env` creation reported one failure because the placeholder check matched `CHANGE_ME` inside a comment.
 - `scripts/deploy.sh` and `scripts/verify-server.sh` have been fixed so placeholder detection only checks active env assignment lines, not comments.
+- The placeholder-check fix has been pulled on the VPS.
+- Post-fix `scripts/verify-server.sh` result: 29 pass, 0 warnings, 0 failures.
+- First `scripts/deploy.sh` attempt failed before containers started because `underroot` did not have permission to access `/var/run/docker.sock`.
+- Fix needed: add `underroot` to the `docker` group and start a fresh SSH session before rerunning deploy.
+- `scripts/deploy.sh` has been updated to check Docker daemon access before build/start.
+- `scripts/harden.sh ssh-step1` has been updated to add `underroot` to the `docker` group when the group exists.

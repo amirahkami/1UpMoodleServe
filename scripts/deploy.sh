@@ -65,6 +65,7 @@ require_commands() {
 
     command -v docker >/dev/null 2>&1 || die "docker command not found. Run scripts/provision.sh first."
     docker compose version >/dev/null 2>&1 || die "docker compose plugin not found. Run scripts/provision.sh first."
+    docker info >/dev/null 2>&1 || die "Current user cannot access Docker. Add the user to the docker group, then log out and back in."
 
     ok "Docker available: $(docker --version)"
     ok "Compose available: $(docker compose version)"

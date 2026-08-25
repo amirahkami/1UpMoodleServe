@@ -155,6 +155,12 @@ ssh_step1() {
     fi
 
     usermod -aG sudo "${SSH_USER}"
+    if getent group docker >/dev/null 2>&1; then
+        usermod -aG docker "${SSH_USER}"
+        ok "Docker group granted for ${SSH_USER}."
+    else
+        warn "Docker group does not exist yet; run: sudo usermod -aG docker ${SSH_USER} after Docker is installed."
+    fi
     echo "${SSH_USER}:${UNDERROOT_PASSWORD}" | chpasswd
     ok "Password set and sudo group granted for ${SSH_USER}."
 
