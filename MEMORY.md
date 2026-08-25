@@ -276,6 +276,7 @@ Implement the first milestone by creating the Docker Compose service layout and 
   - `/dev/shm` hardened.
 - Real `.env` exists only on the VPS at `/opt/1upmoodleserve/.env`; secrets must not be committed or written into memory.
 - First deploy attempt reached Moodle image build but container package downloads could not reach Debian mirrors because nftables forward policy and flushed Docker NAT rules blocked container egress. The hardening script now includes Docker forwarding rules and restarts Docker after nftables reload.
+- After container networking was fixed, the Moodle image build reached PHP extension compilation and failed because `mbstring` requires `libonig-dev`. The Moodle Dockerfile now includes that build dependency.
 
 ## VPS Execution State
 
