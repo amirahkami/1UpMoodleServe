@@ -234,3 +234,10 @@ Implement the first milestone by creating the Docker Compose service layout and 
   - `ssh-step1`: creates/configures `underroot`, prompts for a new password, requires saved-password confirmation, moves SSH to `44422`, keeps root SSH temporarily.
   - `ssh-step2`: requires confirmation that `underroot` login works, then disables direct root SSH and restricts SSH to `underroot`.
   - `system`: configures unattended security updates, sysctl hardening, `/dev/shm`, login banner, nftables, fail2ban, unused-service removal, and `su` restriction.
+- Initial Docker Compose skeleton has been created:
+  - `.env.example`.
+  - `docker-compose.yml`.
+  - Moodle PHP-FPM image scaffold under `docker/moodle/`.
+  - Nginx HTTP bootstrap config under `docker/nginx/`.
+  - PostgreSQL first-run database/user init script under `docker/postgres/init/`.
+  - Certbot notes under `docker/certbot/`.
