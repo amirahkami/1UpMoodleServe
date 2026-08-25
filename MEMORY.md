@@ -241,3 +241,15 @@ Implement the first milestone by creating the Docker Compose service layout and 
   - Nginx HTTP bootstrap config under `docker/nginx/`.
   - PostgreSQL first-run database/user init script under `docker/postgres/init/`.
   - Certbot notes under `docker/certbot/`.
+- `scripts/deploy.sh` has been created.
+- Current `deploy.sh` behavior:
+  - Requires project root.
+  - Warns if not running from `/opt/1upmoodleserve`.
+  - Requires `.env`.
+  - Fails if `.env` contains `CHANGE_ME`.
+  - Verifies Docker and Docker Compose are available.
+  - Runs `docker compose --env-file .env config`.
+  - Builds the Moodle image.
+  - Starts the HTTP bootstrap stack: PostgreSQL, Keycloak, Moodle, and Nginx.
+  - Prints `docker compose ps`.
+  - Does not configure HTTPS yet.
