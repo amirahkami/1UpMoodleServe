@@ -206,7 +206,7 @@ As of 2026-08-25:
 
 ## Next Practical Step
 
-Implement the first milestone by creating the Docker Compose service layout and minimal production-oriented configuration files for Moodle, Nginx, PostgreSQL, and Keycloak.
+Configure HTTPS certificates for Moodle and Keycloak, then configure Keycloak realm/client integration with Moodle OIDC.
 
 ## Script Layout Decision
 
@@ -277,22 +277,17 @@ Implement the first milestone by creating the Docker Compose service layout and 
 - Real `.env` exists only on the VPS at `/opt/1upmoodleserve/.env`; secrets must not be committed or written into memory.
 - First deploy attempt reached Moodle image build but container package downloads could not reach Debian mirrors because nftables forward policy and flushed Docker NAT rules blocked container egress. The hardening script now includes Docker forwarding rules and restarts Docker after nftables reload.
 - After container networking was fixed, the Moodle image build reached PHP extension compilation and failed because `mbstring` requires `libonig-dev`. The Moodle Dockerfile now includes that build dependency.
-- PostgreSQL 18 container startup failed because the Compose volume was mounted at `/var/lib/postgresql/data`. For `postgres:18`, the persistent volume must be mounted at `/var/lib/postgresql` so the image can use its major-version-specific data directory layout.
-- End-of-day stop point on 2026-08-25:
-  - Commit `47123cb fix: add mbstring build dependency` was pushed to `origin/dev`.
-  - VPS pulled the latest `dev` branch.
-  - Moodle image build completed successfully on the VPS.
-  - Docker pulled runtime images for PostgreSQL 18, Keycloak 26.7.2, and Nginx.
-  - Docker Compose created the project networks and named volumes.
-  - Stack startup failed because `1upmoodleserve-postgres-1` became unhealthy.
-  - While trying to inspect PostgreSQL logs, new SSH connections to `underroot@138.68.64.183` on port `44422` started returning `Connection refused`.
-  - Existing SSH sessions became unusable / timed out after the noisy Compose run.
-  - Next recovery step is to use the VPS provider console, then check:
-    - `sudo systemctl status ssh --no-pager`
-    - `sudo ss -tlnp | grep ssh`
-    - `sudo nft list ruleset | grep 44422`
-    - `cd /opt/1upmoodleserve && docker compose --env-file .env logs --tail=120 postgres`
-  - Do not reboot before checking console access unless console login also fails.
+- PostgreSQL 18 container startup failed because the Compose volume was mounted at `/var/lib/postgresql/data`. For `postgres:18`, the persistent volume must be mounted at `/var/lib/postgresql` so the image can use its major-version-specific data directory layout. This is fixed.
+- Moodle first deploy needed explicit bootstrap handling:
+  - The Moodle container now generates managed `config.php` on startup.
+  - The Moodle container runs CLI install once when the Moodle database is empty.
+  - The Moodle container skips install when Moodle tables already exist.
+  - Required PHP extensions include both `pgsql` and `pdo_pgsql`.
+- Moodle 5.2 requires the web server to serve Moodle from its `/public` directory. Nginx now uses `/var/www/html/public` as the Moodle root.
+- HTTP bootstrap is currently successful:
+  - Moodle is reachable externally at `http://moodle.unrealuni.xyz/` and redirects to `http://moodle.unrealuni.xyz/login/index.php` with final HTTP 200.
+  - Keycloak is reachable externally at `http://iam.unrealuni.xyz/` and redirects to `http://iam.unrealuni.xyz/admin/master/console/` with final HTTP 200.
+  - HTTPS is still not configured.
 
 ## VPS Execution State
 
@@ -338,6 +333,23 @@ Implement the first milestone by creating the Docker Compose service layout and 
 - The placeholder-check fix has been pulled on the VPS.
 - Post-fix `scripts/verify-server.sh` result: 29 pass, 0 warnings, 0 failures.
 - First `scripts/deploy.sh` attempt failed before containers started because `underroot` did not have permission to access `/var/run/docker.sock`.
-- Fix needed: add `underroot` to the `docker` group and start a fresh SSH session before rerunning deploy.
+- Fixed by adding `underroot` to the `docker` group and using a fresh SSH session before rerunning deploy.
 - `scripts/deploy.sh` has been updated to check Docker daemon access before build/start.
 - `scripts/harden.sh ssh-step1` has been updated to add `underroot` to the `docker` group when the group exists.
+- Docker image builds from containers initially failed after nftables reload because Docker bridge forwarding and NAT were missing. `scripts/harden.sh system` now allows Docker bridge/private-subnet forwarding and restarts Docker after `flush ruleset`.
+- PostgreSQL is healthy using the Docker volume mounted at `/var/lib/postgresql` for `postgres:18`.
+- The fresh broken PostgreSQL volume from the first failed boot was removed only after explicit approval, then the stack was redeployed.
+- Moodle image includes required PHP extensions and dependencies, including `libonig-dev`, `pgsql`, and `pdo_pgsql`.
+- Moodle config currently uses `MOODLE_WWWROOT=http://moodle.unrealuni.xyz`, `$CFG->reverseproxy = false`, and `$CFG->sslproxy = false`.
+- Dockerfile layer order was improved so entrypoint-only changes do not invalidate the slow Moodle source ownership layer.
+- Current HTTP bootstrap status as of 2026-08-27:
+  - Postgres, Keycloak, Moodle, and Nginx containers are running.
+  - Postgres is healthy.
+  - Internal VPS checks: Moodle final HTTP 200 at the login URL; Keycloak final HTTP 200 at the admin console URL.
+  - External checks from macOS: Moodle final HTTP 200 at the login URL; Keycloak final HTTP 200 at the admin console URL.
+- Latest pushed implementation commits on `origin/dev` include:
+  - `651656a feat: initialize moodle on first deploy`.
+  - `88caf7e fix: add moodle pgsql extension`.
+  - `5c4b32f fix: disable moodle reverse proxy guard`.
+  - `63a98f7 chore: improve moodle image layer caching`.
+  - `172a221 fix: serve moodle public directory`.
