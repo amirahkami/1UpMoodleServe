@@ -261,7 +261,7 @@ check_users() {
     fi
 
     for username in sara.shirazi anna.vanbreda amar.lagosi rhea.coimbra; do
-        if kc get users -r "${KEYCLOAK_REALM}" -q "username=${username}" -q exact=true 2>/dev/null | grep -Eq "\"username\"[[:space:]]*:[[:space:]]*\"${username}\""; then
+        if printf '%s\n' "${users_json}" | grep -Eq "\"username\"[[:space:]]*:[[:space:]]*\"${username}\""; then
             pass "Sample user exists: ${username}"
         else
             fail "Sample user missing: ${username}"
