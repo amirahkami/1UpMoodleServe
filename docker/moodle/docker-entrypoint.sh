@@ -35,8 +35,6 @@ foreach ($required as $name) {
 }
 
 $wwwroot = rtrim(getenv('MOODLE_WWWROOT'), '/');
-$sslproxy = str_starts_with($wwwroot, 'https://') ? 'true' : 'false';
-
 $config = <<<'PHP_CONFIG'
 <?php
 unset($CFG);
@@ -60,8 +58,8 @@ $CFG->wwwroot   = %%MOODLE_WWWROOT%%;
 $CFG->dataroot  = '/var/moodledata';
 $CFG->directorypermissions = 02777;
 $CFG->admin = 'admin';
-$CFG->reverseproxy = true;
-$CFG->sslproxy = %%MOODLE_SSLPROXY%%;
+$CFG->reverseproxy = false;
+$CFG->sslproxy = false;
 $CFG->routerconfigured = false;
 
 require_once(__DIR__ . '/lib/setup.php');
@@ -73,7 +71,6 @@ $replacements = [
     '%%MOODLE_DB_USER%%' => var_export(getenv('MOODLE_DB_USER'), true),
     '%%MOODLE_DB_PASSWORD%%' => var_export(getenv('MOODLE_DB_PASSWORD'), true),
     '%%MOODLE_WWWROOT%%' => var_export($wwwroot, true),
-    '%%MOODLE_SSLPROXY%%' => $sslproxy,
 ];
 
 file_put_contents('/var/www/html/config.php', strtr($config, $replacements));
@@ -157,10 +154,7 @@ if [[ ! -f /var/www/html/version.php ]]; then
 fi
 
 mkdir -p /var/moodledata
-if [[ ! -f /var/www/html/config.php ]]; then
-    write_moodle_config
-fi
-
+write_moodle_config
 install_moodle_if_needed
 chown -R www-data:www-data /var/moodledata /var/www/html
 
