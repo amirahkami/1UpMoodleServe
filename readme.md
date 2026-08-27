@@ -37,6 +37,8 @@ sudo bash scripts/provision.sh
 sudo bash scripts/harden.sh ssh-step1
 sudo bash scripts/harden.sh ssh-step2
 sudo bash scripts/harden.sh system
+bash scripts/deploy.sh
+bash scripts/https.sh issue
 ```
 
 `provision.sh` prepares the VPS for Docker-based deployment.
@@ -46,6 +48,10 @@ sudo bash scripts/harden.sh system
 `harden.sh ssh-step2` disables direct root SSH only after `underroot` login has been confirmed.
 
 `harden.sh system` applies firewall and baseline host security.
+
+`deploy.sh` starts the HTTP bootstrap stack.
+
+`https.sh issue` obtains the initial Let's Encrypt certificate and switches the stack to HTTPS.
 
 ## Secrets
 
