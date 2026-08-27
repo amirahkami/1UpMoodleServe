@@ -25,6 +25,7 @@ RUN apt-get update \
         mbstring \
         opcache \
         pcntl \
+        pgsql \
         pdo_pgsql \
         soap \
         zip \
