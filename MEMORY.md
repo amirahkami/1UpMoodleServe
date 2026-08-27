@@ -233,6 +233,12 @@ Configure HTTPS certificates for Moodle and Keycloak, then configure Keycloak re
   - URLs use real HTTPS domains instead of local HTTP URLs.
   - Client secrets and seeded-user temporary password come from VPS `.env`, not from committed files.
 - `scripts/keycloak-realm.sh reset` exists for test-bench cleanup and requires explicit `CONFIRM_KEYCLOAK_REALM_RESET=unrealuni`.
+- The test-bench VPS `unrealuni` realm was reset after the numbered-user seed issue.
+- Current public realm status:
+  - Discovery endpoint works: `https://iam.unrealuni.xyz/realms/unrealuni/.well-known/openid-configuration`.
+  - Issuer is `https://iam.unrealuni.xyz/realms/unrealuni`.
+  - Moodle client redirect URI is `https://moodle.unrealuni.xyz/*`.
+  - Seed users use realistic globally mixed usernames and `@unrealuni.xyz` email addresses.
 
 ## Script Layout Decision
 
