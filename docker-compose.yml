@@ -14,7 +14,7 @@ services:
       KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER}
       KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\""]
@@ -107,4 +107,3 @@ networks:
   internal:
     internal: true
   public:
-

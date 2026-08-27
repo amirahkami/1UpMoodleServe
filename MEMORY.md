@@ -277,6 +277,22 @@ Implement the first milestone by creating the Docker Compose service layout and 
 - Real `.env` exists only on the VPS at `/opt/1upmoodleserve/.env`; secrets must not be committed or written into memory.
 - First deploy attempt reached Moodle image build but container package downloads could not reach Debian mirrors because nftables forward policy and flushed Docker NAT rules blocked container egress. The hardening script now includes Docker forwarding rules and restarts Docker after nftables reload.
 - After container networking was fixed, the Moodle image build reached PHP extension compilation and failed because `mbstring` requires `libonig-dev`. The Moodle Dockerfile now includes that build dependency.
+- PostgreSQL 18 container startup failed because the Compose volume was mounted at `/var/lib/postgresql/data`. For `postgres:18`, the persistent volume must be mounted at `/var/lib/postgresql` so the image can use its major-version-specific data directory layout.
+- End-of-day stop point on 2026-08-25:
+  - Commit `47123cb fix: add mbstring build dependency` was pushed to `origin/dev`.
+  - VPS pulled the latest `dev` branch.
+  - Moodle image build completed successfully on the VPS.
+  - Docker pulled runtime images for PostgreSQL 18, Keycloak 26.7.2, and Nginx.
+  - Docker Compose created the project networks and named volumes.
+  - Stack startup failed because `1upmoodleserve-postgres-1` became unhealthy.
+  - While trying to inspect PostgreSQL logs, new SSH connections to `underroot@138.68.64.183` on port `44422` started returning `Connection refused`.
+  - Existing SSH sessions became unusable / timed out after the noisy Compose run.
+  - Next recovery step is to use the VPS provider console, then check:
+    - `sudo systemctl status ssh --no-pager`
+    - `sudo ss -tlnp | grep ssh`
+    - `sudo nft list ruleset | grep 44422`
+    - `cd /opt/1upmoodleserve && docker compose --env-file .env logs --tail=120 postgres`
+  - Do not reboot before checking console access unless console login also fails.
 
 ## VPS Execution State
 
