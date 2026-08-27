@@ -54,10 +54,16 @@ services:
     restart: unless-stopped
     environment:
       MOODLE_DOMAIN: ${MOODLE_DOMAIN}
+      MOODLE_WWWROOT: ${MOODLE_WWWROOT:-http://${MOODLE_DOMAIN}}
       MOODLE_DB_HOST: postgres
       MOODLE_DB_NAME: ${MOODLE_DB_NAME}
       MOODLE_DB_USER: ${MOODLE_DB_USER}
       MOODLE_DB_PASSWORD: ${MOODLE_DB_PASSWORD}
+      MOODLE_ADMIN_USER: ${MOODLE_ADMIN_USER}
+      MOODLE_ADMIN_PASSWORD: ${MOODLE_ADMIN_PASSWORD}
+      MOODLE_ADMIN_EMAIL: ${MOODLE_ADMIN_EMAIL}
+      MOODLE_FULLNAME: ${MOODLE_FULLNAME}
+      MOODLE_SHORTNAME: ${MOODLE_SHORTNAME}
     volumes:
       - moodle_data:/var/moodledata
       - moodle_code:/var/www/html
