@@ -40,6 +40,7 @@ sudo bash scripts/harden.sh system
 bash scripts/deploy.sh
 bash scripts/https.sh issue
 bash scripts/keycloak-realm.sh apply
+bash scripts/verify-keycloak-realm.sh
 ```
 
 `provision.sh` prepares the VPS for Docker-based deployment.
@@ -55,6 +56,8 @@ bash scripts/keycloak-realm.sh apply
 `https.sh issue` obtains the initial Let's Encrypt certificate and switches the stack to HTTPS.
 
 `keycloak-realm.sh apply` creates/updates the Moodle-focused `unrealuni` Keycloak realm.
+
+`verify-keycloak-realm.sh` checks the live Keycloak realm without changing it.
 
 ## Secrets
 
