@@ -240,6 +240,7 @@ Configure HTTPS certificates for Moodle and Keycloak, then configure Keycloak re
   - Issuer is `https://iam.unrealuni.xyz/realms/unrealuni`.
   - Moodle client redirect URI is `https://moodle.unrealuni.xyz/*`.
   - Seed users use realistic globally mixed usernames and `@unrealuni.xyz` email addresses.
+  - `scripts/verify-keycloak-realm.sh` result on VPS: 38 pass, 0 warnings, 0 failures.
 
 ## Script Layout Decision
 
