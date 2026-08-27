@@ -360,10 +360,18 @@ Configure HTTPS certificates for Moodle and Keycloak, then configure Keycloak re
   - `docker/nginx/https.d` contains HTTPS configs that use the shared certificate path `/etc/letsencrypt/live/1upmoodleserve`.
   - `scripts/https.sh issue` temporarily sets `NGINX_CONF_DIR=./docker/nginx/http.d`, issues the Let's Encrypt certificate, then sets `NGINX_CONF_DIR=./docker/nginx/https.d` and `MOODLE_WWWROOT=https://moodle.unrealuni.xyz`.
   - `scripts/https.sh renew` runs Certbot renewal and reloads Nginx.
-- HTTPS workflow has been pushed to `origin/dev`, but has not yet been successfully pulled/executed on the VPS because repeated failed SSH automation attempts likely triggered fail2ban.
+- HTTPS workflow has been pulled/executed on the VPS.
+- Current HTTPS status as of 2026-08-27:
+  - `https://moodle.unrealuni.xyz/` redirects to `https://moodle.unrealuni.xyz/login/index.php` and returns final HTTP 200.
+  - `https://iam.unrealuni.xyz/` redirects to `https://iam.unrealuni.xyz/admin/master/console/` and returns final HTTP 200.
+  - HTTP now redirects to HTTPS for both Moodle and Keycloak.
+  - Let's Encrypt certificate is valid for both `moodle.unrealuni.xyz` and `iam.unrealuni.xyz`.
+  - Certificate issuer observed externally: Let's Encrypt `YE1`.
+  - Certificate validity observed externally: starts 2026-08-27 08:49:53 UTC, expires 2026-11-25 08:49:52 UTC.
 - Current likely SSH block state as of 2026-08-27:
   - Web services still respond over HTTP.
   - SSH TCP connect to `138.68.64.183:44422` hangs from this Mac.
   - Local public IP observed by `curl https://ifconfig.me`: `134.147.21.206`.
   - Hardening script fail2ban config uses `bantime = 3600`, `findtime = 600`, and `maxretry = 3`.
   - Recovery through the VPS provider console: `sudo fail2ban-client set sshd unbanip 134.147.21.206`.
+- User added `134.147.21.206` to fail2ban ignore list and unbanned it through the DigitalOcean console.
