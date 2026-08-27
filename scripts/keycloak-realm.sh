@@ -157,8 +157,9 @@ ensure_group() {
 }
 
 client_uuid() {
-    kc get clients -r "${KEYCLOAK_REALM}" -q "clientId=${KEYCLOAK_MOODLE_CLIENT_ID}" --fields id --format csv \
-        | awk 'NR == 2 { gsub(/"/, "", $1); print $1 }'
+    kc get clients -r "${KEYCLOAK_REALM}" -q "clientId=${KEYCLOAK_MOODLE_CLIENT_ID}" --fields id \
+        | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+        | head -n 1
 }
 
 ensure_client() {
@@ -192,6 +193,8 @@ ensure_client() {
             -s "webOrigins=[\"${MOODLE_BASE_URL}\"]" >/dev/null
         ok "Moodle client updated."
     fi
+
+    [[ -n "${uuid}" ]] || die "Could not resolve Keycloak client UUID for ${KEYCLOAK_MOODLE_CLIENT_ID}."
 
     MOODLE_CLIENT_UUID="${uuid}"
 }
