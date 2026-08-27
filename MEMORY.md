@@ -208,6 +208,28 @@ As of 2026-08-25:
 
 Configure HTTPS certificates for Moodle and Keycloak, then configure Keycloak realm/client integration with Moodle OIDC.
 
+## Keycloak Realm Direction
+
+- Use the old `/Users/amir/Desktop/sandbox/1UpKeyCloak` project only as design inspiration, not as a 1:1 realm copy.
+- Keep the university simulation idea:
+  - identity type through realm roles.
+  - university structure through groups.
+  - Moodle-specific permission hints through Moodle client roles.
+  - OIDC claims for Moodle integration.
+- Current realm target:
+  - Realm: `unrealuni`.
+  - Client: `moodle` only.
+  - Groups: `Faculty of Medicine`, `Faculty of Humanities`, `Faculty of Engineering`, `IT-Services`, `Finance`.
+  - Realm roles: `student`, `staff`, `alumni`, `guest`.
+  - Moodle client roles: `admin`, `manager`, `course_creator`, `teacher`, `student`, `guest`.
+  - Claims: `groups`, `primary_group`, `university_role`, `moodle_roles`.
+  - Seeded simulation users: 130 total, with 50 students, 20 staff, 50 alumni, and 10 guests.
+- Changes from the old local dev realm:
+  - Realm name changes from `university-dev` to `unrealuni`.
+  - Clients are reduced from `moodle`, `ilias`, and `jupyterhub` to `moodle` only.
+  - URLs use real HTTPS domains instead of local HTTP URLs.
+  - Client secrets and seeded-user temporary password come from VPS `.env`, not from committed files.
+
 ## Script Layout Decision
 
 - Use fewer scripts with subcommands where needed.
