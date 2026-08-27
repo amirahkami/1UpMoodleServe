@@ -354,3 +354,16 @@ Configure HTTPS certificates for Moodle and Keycloak, then configure Keycloak re
   - `5c4b32f fix: disable moodle reverse proxy guard`.
   - `63a98f7 chore: improve moodle image layer caching`.
   - `172a221 fix: serve moodle public directory`.
+- HTTPS workflow was added in commit `757d06f feat: add https certificate workflow`.
+- HTTPS implementation state:
+  - `docker/nginx/http.d` contains the HTTP bootstrap Nginx configs.
+  - `docker/nginx/https.d` contains HTTPS configs that use the shared certificate path `/etc/letsencrypt/live/1upmoodleserve`.
+  - `scripts/https.sh issue` temporarily sets `NGINX_CONF_DIR=./docker/nginx/http.d`, issues the Let's Encrypt certificate, then sets `NGINX_CONF_DIR=./docker/nginx/https.d` and `MOODLE_WWWROOT=https://moodle.unrealuni.xyz`.
+  - `scripts/https.sh renew` runs Certbot renewal and reloads Nginx.
+- HTTPS workflow has been pushed to `origin/dev`, but has not yet been successfully pulled/executed on the VPS because repeated failed SSH automation attempts likely triggered fail2ban.
+- Current likely SSH block state as of 2026-08-27:
+  - Web services still respond over HTTP.
+  - SSH TCP connect to `138.68.64.183:44422` hangs from this Mac.
+  - Local public IP observed by `curl https://ifconfig.me`: `134.147.21.206`.
+  - Hardening script fail2ban config uses `bantime = 3600`, `findtime = 600`, and `maxretry = 3`.
+  - Recovery through the VPS provider console: `sudo fail2ban-client set sshd unbanip 134.147.21.206`.
