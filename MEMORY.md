@@ -347,6 +347,7 @@ Configure HTTPS certificates for Moodle and Keycloak, then configure Keycloak re
   - Postgres is healthy.
   - Internal VPS checks: Moodle final HTTP 200 at the login URL; Keycloak final HTTP 200 at the admin console URL.
   - External checks from macOS: Moodle final HTTP 200 at the login URL; Keycloak final HTTP 200 at the admin console URL.
+- Post-bootstrap VPS verifier result as of 2026-08-27: 31 pass, 0 warnings, 0 failures.
 - Latest pushed implementation commits on `origin/dev` include:
   - `651656a feat: initialize moodle on first deploy`.
   - `88caf7e fix: add moodle pgsql extension`.
