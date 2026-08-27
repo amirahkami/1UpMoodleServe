@@ -242,6 +242,18 @@ Configure HTTPS certificates for Moodle and Keycloak, then configure Keycloak re
   - Seed users use realistic globally mixed usernames and `@unrealuni.xyz` email addresses.
   - `scripts/verify-keycloak-realm.sh` result on VPS: 38 pass, 0 warnings, 0 failures.
 
+## End Of Day 2026-08-27
+
+- Stop point: Moodle and Keycloak are both live over HTTPS.
+- Keycloak realm `unrealuni` is created and verified.
+- Realm verification result: 38 pass, 0 warnings, 0 failures.
+- Latest completed milestone: reproducible Keycloak realm setup and verifier.
+- Next session should start with Moodle OIDC integration:
+  - Check Moodle authentication plugins.
+  - Configure Keycloak/OIDC issuer in Moodle.
+  - Test login with seeded users.
+  - Move any manual Moodle OIDC steps into automation or runbook.
+
 ## Script Layout Decision
 
 - Use fewer scripts with subcommands where needed.
