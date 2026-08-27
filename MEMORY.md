@@ -224,11 +224,15 @@ Configure HTTPS certificates for Moodle and Keycloak, then configure Keycloak re
   - Moodle client roles: `admin`, `manager`, `course_creator`, `teacher`, `student`, `guest`.
   - Claims: `groups`, `primary_group`, `university_role`, `moodle_roles`.
   - Seeded simulation users: 130 total, with 50 students, 20 staff, 50 alumni, and 10 guests.
+  - Seeded user emails use `<username>@unrealuni.xyz`.
+  - Usernames should use short first names and culturally plausible place-derived surnames, with globally mixed representation in each user group.
+  - Avoid numbered users such as `student001` and avoid sensitive religious/political place references.
 - Changes from the old local dev realm:
   - Realm name changes from `university-dev` to `unrealuni`.
   - Clients are reduced from `moodle`, `ilias`, and `jupyterhub` to `moodle` only.
   - URLs use real HTTPS domains instead of local HTTP URLs.
   - Client secrets and seeded-user temporary password come from VPS `.env`, not from committed files.
+- `scripts/keycloak-realm.sh reset` exists for test-bench cleanup and requires explicit `CONFIRM_KEYCLOAK_REALM_RESET=unrealuni`.
 
 ## Script Layout Decision
 

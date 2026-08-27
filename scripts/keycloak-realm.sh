@@ -39,6 +39,7 @@ usage() {
     cat <<'EOF'
 Usage:
   bash scripts/keycloak-realm.sh apply
+  CONFIRM_KEYCLOAK_REALM_RESET=unrealuni bash scripts/keycloak-realm.sh reset
 
 Creates/updates:
   realm: unrealuni
@@ -65,20 +66,37 @@ require_env_file() {
     [[ -f "${ENV_FILE}" ]] || die "Missing ${ENV_FILE}. Create it on the VPS first."
 }
 
+env_get() {
+    local key="$1"
+    local default="${2:-}"
+    local value
+
+    value="$(awk -F= -v key="${key}" '$1 == key { sub(/^[^=]*=/, ""); print; found=1 } END { if (!found) exit 1 }' "${ENV_FILE}" 2>/dev/null || true)"
+    value="${value%\"}"
+    value="${value#\"}"
+
+    if [[ -z "${value}" ]]; then
+        printf '%s\n' "${default}"
+    else
+        printf '%s\n' "${value}"
+    fi
+}
+
 load_env() {
-    set -a
-    # shellcheck disable=SC1090
-    source "${ENV_FILE}"
-    set +a
+    KEYCLOAK_ADMIN="$(env_get KEYCLOAK_ADMIN)"
+    KEYCLOAK_ADMIN_PASSWORD="$(env_get KEYCLOAK_ADMIN_PASSWORD)"
+    KEYCLOAK_REALM="$(env_get KEYCLOAK_REALM "${REALM_DEFAULT}")"
+    KEYCLOAK_MOODLE_CLIENT_ID="$(env_get KEYCLOAK_MOODLE_CLIENT_ID "${MOODLE_CLIENT_ID_DEFAULT}")"
+    KEYCLOAK_MOODLE_CLIENT_SECRET="$(env_get KEYCLOAK_MOODLE_CLIENT_SECRET)"
+    KEYCLOAK_SEED_USER_PASSWORD="$(env_get KEYCLOAK_SEED_USER_PASSWORD)"
+    KEYCLOAK_SEED_EMAIL_DOMAIN="$(env_get KEYCLOAK_SEED_EMAIL_DOMAIN "unrealuni.xyz")"
+    KEYCLOAK_DOMAIN="$(env_get KEYCLOAK_DOMAIN "iam.unrealuni.xyz")"
+    MOODLE_DOMAIN="$(env_get MOODLE_DOMAIN "${MOODLE_DOMAIN_DEFAULT}")"
 
-    KEYCLOAK_REALM="${KEYCLOAK_REALM:-${REALM_DEFAULT}}"
-    KEYCLOAK_MOODLE_CLIENT_ID="${KEYCLOAK_MOODLE_CLIENT_ID:-${MOODLE_CLIENT_ID_DEFAULT}}"
-    MOODLE_DOMAIN="${MOODLE_DOMAIN:-${MOODLE_DOMAIN_DEFAULT}}"
-
-    : "${KEYCLOAK_ADMIN:?KEYCLOAK_ADMIN is required in .env}"
-    : "${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required in .env}"
-    : "${KEYCLOAK_MOODLE_CLIENT_SECRET:?KEYCLOAK_MOODLE_CLIENT_SECRET is required in .env}"
-    : "${KEYCLOAK_SEED_USER_PASSWORD:?KEYCLOAK_SEED_USER_PASSWORD is required in .env}"
+    [[ -n "${KEYCLOAK_ADMIN}" ]] || die "KEYCLOAK_ADMIN is required in .env."
+    [[ -n "${KEYCLOAK_ADMIN_PASSWORD}" ]] || die "KEYCLOAK_ADMIN_PASSWORD is required in .env."
+    [[ -n "${KEYCLOAK_MOODLE_CLIENT_SECRET}" ]] || die "KEYCLOAK_MOODLE_CLIENT_SECRET is required in .env."
+    [[ -n "${KEYCLOAK_SEED_USER_PASSWORD}" ]] || die "KEYCLOAK_SEED_USER_PASSWORD is required in .env."
 
     [[ "${KEYCLOAK_MOODLE_CLIENT_SECRET}" != *CHANGE_ME* ]] || die "KEYCLOAK_MOODLE_CLIENT_SECRET still contains CHANGE_ME."
     [[ "${KEYCLOAK_SEED_USER_PASSWORD}" != *CHANGE_ME* ]] || die "KEYCLOAK_SEED_USER_PASSWORD still contains CHANGE_ME."
@@ -133,6 +151,17 @@ ensure_realm() {
             -s rememberMe=true \
             -s sslRequired=external >/dev/null
         ok "Realm ${KEYCLOAK_REALM} created."
+    fi
+}
+
+delete_realm() {
+    section "Delete realm"
+
+    if realm_exists; then
+        kc delete "realms/${KEYCLOAK_REALM}" >/dev/null
+        ok "Realm ${KEYCLOAK_REALM} deleted."
+    else
+        warn "Realm ${KEYCLOAK_REALM} does not exist."
     fi
 }
 
@@ -317,7 +346,7 @@ ensure_user() {
     local university_role="$4"
     local primary_group="$5"
     local moodle_role="${6:-}"
-    local email="${username}@unrealuni.edu"
+    local email="${username}@${KEYCLOAK_SEED_EMAIL_DOMAIN}"
 
     if ! user_exists "${username}"; then
         if [[ -n "${primary_group}" ]]; then
@@ -352,75 +381,174 @@ ensure_user() {
     fi
 }
 
-faculty_for_index() {
-    local index="$1"
-
-    case $((index % 3)) in
-        1) echo "Faculty of Medicine" ;;
-        2) echo "Faculty of Humanities" ;;
-        *) echo "Faculty of Engineering" ;;
-    esac
-}
-
 seed_staff_users() {
-    ensure_user "anna.meyer" "Anna" "Meyer" "staff" "IT-Services" "admin"
-    ensure_user "rami.youssef" "Rami" "Youssef" "staff" "IT-Services" "admin"
-    ensure_user "clara.dubois" "Clara" "Dubois" "staff" "IT-Services" "admin"
-    ensure_user "mark.stone" "Mark" "Stone" "staff" "IT-Services" "admin"
+    local users=(
+        "anna.vanbreda|Anna|Vanbreda|IT-Services|admin"
+        "hass.lagosi|Hass|Lagosi|IT-Services|admin"
+        "priy.delhiwala|Priy|Delhiwala|IT-Services|admin"
+        "dave.vonmainz|Dave|Vonmainz|IT-Services|admin"
+        "simo.torinese|Simo|Torinese|Faculty of Engineering|manager"
+        "sara.kermani|Sara|Kermani|Faculty of Medicine|manager"
+        "cleo.parisien|Cleo|Parisien|Faculty of Humanities|manager"
+        "rami.lisboeta|Rami|Lisboeta|Faculty of Medicine|course_creator"
+        "mark.oxford|Mark|Oxford|Faculty of Humanities|course_creator"
+        "fati.granadino|Fati|Granadino|Faculty of Engineering|course_creator"
+        "yuki.kobe|Yuki|Kobe|Faculty of Medicine|teacher"
+        "omar.valenciano|Omar|Valenciano|Faculty of Humanities|teacher"
+        "miri.vonbonn|Miri|Vonbonn|Faculty of Engineering|teacher"
+        "lina.vandelft|Lina|Vandelft|Faculty of Medicine|teacher"
+        "alex.berliner|Alex|Berliner|Faculty of Humanities|teacher"
+        "nadi.marseillais|Nadi|Marseillais|Faculty of Engineering|teacher"
+        "dani.york|Dani|York|IT-Services|"
+        "mei.nara|Mei|Nara|Finance|"
+        "reza.kashani|Reza|Kashani|IT-Services|"
+        "rita.sevillano|Rita|Sevillano|Finance|"
+    )
+    local record username first_name last_name primary_group moodle_role
 
-    ensure_user "owen.clark" "Owen" "Clark" "staff" "Faculty of Medicine" "manager"
-    ensure_user "julia.fischer" "Julia" "Fischer" "staff" "Faculty of Humanities" "manager"
-    ensure_user "alex.morgan" "Alex" "Morgan" "staff" "Faculty of Engineering" "manager"
-
-    ensure_user "sara.keller" "Sara" "Keller" "staff" "Faculty of Medicine" "course_creator"
-    ensure_user "victor.hugo" "Victor" "Hugo" "staff" "Faculty of Humanities" "course_creator"
-    ensure_user "fatima.bello" "Fatima" "Bello" "staff" "Faculty of Engineering" "course_creator"
-
-    ensure_user "david.nolan" "David" "Nolan" "staff" "Faculty of Medicine" "teacher"
-    ensure_user "miriam.hoffmann" "Miriam" "Hoffmann" "staff" "Faculty of Medicine" "teacher"
-    ensure_user "nadia.saleh" "Nadia" "Saleh" "staff" "Faculty of Humanities" "teacher"
-    ensure_user "peter.weber" "Peter" "Weber" "staff" "Faculty of Humanities" "teacher"
-    ensure_user "simon.reed" "Simon" "Reed" "staff" "Faculty of Engineering" "teacher"
-    ensure_user "elena.marin" "Elena" "Marin" "staff" "Faculty of Engineering" "teacher"
-
-    ensure_user "daniel.wolf" "Daniel" "Wolf" "staff" "IT-Services"
-    ensure_user "olga.sokolov" "Olga" "Sokolov" "staff" "IT-Services"
-    ensure_user "priya.shah" "Priya" "Shah" "staff" "Finance"
-    ensure_user "hassan.karim" "Hassan" "Karim" "staff" "Finance"
+    for record in "${users[@]}"; do
+        IFS='|' read -r username first_name last_name primary_group moodle_role <<< "${record}"
+        ensure_user "${username}" "${first_name}" "${last_name}" "staff" "${primary_group}" "${moodle_role}"
+    done
 }
 
-seed_numbered_users() {
-    local type="$1"
-    local count="$2"
-    local realm_role="$3"
-    local moodle_role="$4"
-    local i
-    local username
-    local last_name
-    local first_name
-    local faculty
+seed_named_users() {
+    local university_role="$1"
+    local moodle_role="$2"
+    shift 2
 
-    for i in $(seq 1 "${count}"); do
-        username="$(printf '%s%03d' "${type}" "${i}")"
-        last_name="$(printf '%03d' "${i}")"
-        first_name="$(printf '%s' "${type}" | awk '{ print toupper(substr($0, 1, 1)) substr($0, 2) }')"
+    local record username first_name last_name primary_group
 
-        if [[ "${realm_role}" == "guest" ]]; then
-            ensure_user "${username}" "${first_name}" "${last_name}" "${realm_role}" "" "${moodle_role}"
-        else
-            faculty="$(faculty_for_index "${i}")"
-            ensure_user "${username}" "${first_name}" "${last_name}" "${realm_role}" "${faculty}" "${moodle_role}"
-        fi
+    for record in "$@"; do
+        IFS='|' read -r username first_name last_name primary_group <<< "${record}"
+        ensure_user "${username}" "${first_name}" "${last_name}" "${university_role}" "${primary_group}" "${moodle_role}"
     done
 }
 
 seed_users() {
     section "Seed university users"
 
+    local students=(
+        "sara.shirazi|Sara|Shirazi|Faculty of Medicine"
+        "omar.vandelft|Omar|Vandelft|Faculty of Humanities"
+        "ravi.delhiwala|Ravi|Delhiwala|Faculty of Engineering"
+        "yuki.osaka|Yuki|Osaka|Faculty of Medicine"
+        "lea.vonessen|Lea|Vonessen|Faculty of Humanities"
+        "tom.york|Tom|York|Faculty of Engineering"
+        "mina.milanese|Mina|Milanese|Faculty of Medicine"
+        "zara.lyonnais|Zara|Lyonnais|Faculty of Humanities"
+        "nima.tehrani|Nima|Tehrani|Faculty of Engineering"
+        "hana.kyoto|Hana|Kyoto|Faculty of Medicine"
+        "aria.valenciano|Aria|Valenciano|Faculty of Humanities"
+        "kai.tokyo|Kai|Tokyo|Faculty of Engineering"
+        "lina.vanbreda|Lina|Vanbreda|Faculty of Medicine"
+        "amir.lahori|Amir|Lahori|Faculty of Humanities"
+        "nora.bath|Nora|Bath|Faculty of Engineering"
+        "maya.vanleiden|Maya|Vanleiden|Faculty of Medicine"
+        "noor.kermani|Noor|Kermani|Faculty of Humanities"
+        "luca.romano|Luca|Romano|Faculty of Engineering"
+        "sana.hyderabadi|Sana|Hyderabadi|Faculty of Medicine"
+        "ivan.vanburen|Ivan|Vanburen|Faculty of Humanities"
+        "rosa.sevillano|Rosa|Sevillano|Faculty of Engineering"
+        "ali.ankarali|Ali|Ankarali|Faculty of Medicine"
+        "mei.kobe|Mei|Kobe|Faculty of Humanities"
+        "emma.london|Emma|London|Faculty of Engineering"
+        "reza.yazdi|Reza|Yazdi|Faculty of Medicine"
+        "mila.vonkoln|Mila|Vonkoln|Faculty of Humanities"
+        "pavi.madurai|Pavi|Madurai|Faculty of Engineering"
+        "luc.parisien|Luc|Parisien|Faculty of Medicine"
+        "dara.tabrizi|Dara|Tabrizi|Faculty of Humanities"
+        "yara.izmirli|Yara|Izmirli|Faculty of Engineering"
+        "hugo.vontrier|Hugo|Vontrier|Faculty of Medicine"
+        "ines.lisboeta|Ines|Lisboeta|Faculty of Humanities"
+        "sami.lagosi|Sami|Lagosi|Faculty of Engineering"
+        "ruby.kent|Ruby|Kent|Faculty of Medicine"
+        "tara.genovese|Tara|Genovese|Faculty of Humanities"
+        "adam.prager|Adam|Prager|Faculty of Engineering"
+        "lila.kashani|Lila|Kashani|Faculty of Medicine"
+        "pino.napolitano|Pino|Napolitano|Faculty of Humanities"
+        "timo.vankampen|Timo|Vankampen|Faculty of Engineering"
+        "eda.istanbullu|Eda|Istanbullu|Faculty of Medicine"
+        "rami.torinese|Rami|Torinese|Faculty of Humanities"
+        "eva.toledano|Eva|Toledano|Faculty of Engineering"
+        "yuna.nara|Yuna|Nara|Faculty of Medicine"
+        "alma.granadino|Alma|Granadino|Faculty of Humanities"
+        "zain.coimbra|Zain|Coimbra|Faculty of Engineering"
+        "nina.nicois|Nina|Nicois|Faculty of Medicine"
+        "olga.vonbonn|Olga|Vonbonn|Faculty of Humanities"
+        "mona.alexandri|Mona|Alexandri|Faculty of Engineering"
+        "jona.dubliner|Jona|Dubliner|Faculty of Medicine"
+        "fari.isfahani|Fari|Isfahani|Faculty of Humanities"
+    )
+    local alumni=(
+        "amar.lagosi|Amar|Lagosi|Faculty of Medicine"
+        "tara.shirazi|Tara|Shirazi|Faculty of Humanities"
+        "kian.dubliner|Kian|Dubliner|Faculty of Engineering"
+        "jin.osaka|Jin|Osaka|Faculty of Medicine"
+        "mara.granadino|Mara|Granadino|Faculty of Humanities"
+        "ali.tehrani|Ali|Tehrani|Faculty of Engineering"
+        "lynn.london|Lynn|London|Faculty of Medicine"
+        "sana.lahori|Sana|Lahori|Faculty of Humanities"
+        "idri.vankampen|Idri|Vankampen|Faculty of Engineering"
+        "lila.vonessen|Lila|Vonessen|Faculty of Medicine"
+        "eva.napolitano|Eva|Napolitano|Faculty of Humanities"
+        "nadi.tabrizi|Nadi|Tabrizi|Faculty of Engineering"
+        "andi.coimbra|Andi|Coimbra|Faculty of Medicine"
+        "aya.kyoto|Aya|Kyoto|Faculty of Humanities"
+        "amin.lagosi|Amin|Lagosi|Faculty of Engineering"
+        "niko.vontrier|Niko|Vontrier|Faculty of Medicine"
+        "seli.ankarali|Seli|Ankarali|Faculty of Humanities"
+        "mate.valenciano|Mate|Valenciano|Faculty of Engineering"
+        "ivy.canton|Ivy|Canton|Faculty of Medicine"
+        "ola.kashani|Ola|Kashani|Faculty of Humanities"
+        "rani.vanleiden|Rani|Vanleiden|Faculty of Engineering"
+        "marc.romano|Marc|Romano|Faculty of Medicine"
+        "brun.lisboeta|Brun|Lisboeta|Faculty of Humanities"
+        "nour.kermani|Nour|Kermani|Faculty of Engineering"
+        "erik.vankampen|Erik|Vankampen|Faculty of Medicine"
+        "dali.vandelft|Dali|Vandelft|Faculty of Humanities"
+        "theo.parisien|Theo|Parisien|Faculty of Engineering"
+        "nia.bath|Nia|Bath|Faculty of Medicine"
+        "muna.alexandri|Muna|Alexandri|Faculty of Humanities"
+        "kira.vanburen|Kira|Vanburen|Faculty of Engineering"
+        "jan.prager|Jan|Prager|Faculty of Medicine"
+        "yusu.istanbullu|Yusu|Istanbullu|Faculty of Humanities"
+        "reem.bergen|Reem|Bergen|Faculty of Engineering"
+        "liam.kent|Liam|Kent|Faculty of Medicine"
+        "anik.kermani|Anik|Kermani|Faculty of Humanities"
+        "toma.vonulm|Toma|Vonulm|Faculty of Engineering"
+        "ines.nicois|Ines|Nicois|Faculty of Medicine"
+        "jami.vonkoln|Jami|Vonkoln|Faculty of Humanities"
+        "raya.lyonnais|Raya|Lyonnais|Faculty of Engineering"
+        "lina.vanleiden|Lina|Vanleiden|Faculty of Medicine"
+        "nola.camden|Nola|Camden|Faculty of Humanities"
+        "ema.milanese|Ema|Milanese|Faculty of Engineering"
+        "maks.berliner|Maks|Berliner|Faculty of Medicine"
+        "alan.toledano|Alan|Toledano|Faculty of Humanities"
+        "zara.torinese|Zara|Torinese|Faculty of Engineering"
+        "paru.madurai|Paru|Madurai|Faculty of Medicine"
+        "mila.vonmainz|Mila|Vonmainz|Faculty of Humanities"
+        "rafi.delhiwala|Rafi|Delhiwala|Faculty of Engineering"
+        "hana.tokyo|Hana|Tokyo|Faculty of Medicine"
+        "sara.hyderabadi|Sara|Hyderabadi|Faculty of Humanities"
+    )
+    local guests=(
+        "rhea.coimbra|Rhea|Coimbra|"
+        "alan.york|Alan|York|"
+        "mia.parisien|Mia|Parisien|"
+        "ilan.vandelft|Ilan|Vandelft|"
+        "sia.toledo|Sia|Toledo|"
+        "tim.kent|Tim|Kent|"
+        "una.bath|Una|Bath|"
+        "max.bergen|Max|Bergen|"
+        "lia.nara|Lia|Nara|"
+        "ian.kobe|Ian|Kobe|"
+    )
+
     seed_staff_users
-    seed_numbered_users "student" 50 "student" "student"
-    seed_numbered_users "alumni" 50 "alumni" "student"
-    seed_numbered_users "guest" 10 "guest" "guest"
+    seed_named_users "student" "student" "${students[@]}"
+    seed_named_users "alumni" "student" "${alumni[@]}"
+    seed_named_users "guest" "guest" "${guests[@]}"
 
     ok "Seed users ensured: 50 students, 20 staff, 50 alumni, 10 guests."
 }
@@ -430,8 +558,9 @@ show_summary() {
 
     info "Realm: ${KEYCLOAK_REALM}"
     info "Client: ${KEYCLOAK_MOODLE_CLIENT_ID}"
-    info "Issuer: https://${KEYCLOAK_DOMAIN:-iam.unrealuni.xyz}/realms/${KEYCLOAK_REALM}"
+    info "Issuer: https://${KEYCLOAK_DOMAIN}/realms/${KEYCLOAK_REALM}"
     info "Moodle redirect URI: ${MOODLE_REDIRECT_URI}"
+    info "Seed user email domain: ${KEYCLOAK_SEED_EMAIL_DOMAIN}"
     info "Seeded user password is temporary and must be changed on first login."
 }
 
@@ -449,10 +578,31 @@ apply_realm() {
     show_summary
 }
 
+reset_realm() {
+    require_repo_root
+    require_env_file
+    load_env
+    require_commands
+
+    [[ "${CONFIRM_KEYCLOAK_REALM_RESET:-}" == "${KEYCLOAK_REALM}" ]] || die "Set CONFIRM_KEYCLOAK_REALM_RESET=${KEYCLOAK_REALM} to reset this realm."
+
+    authenticate
+    delete_realm
+    ensure_realm
+    ensure_client
+    ensure_roles_and_groups
+    ensure_mappers
+    seed_users
+    show_summary
+}
+
 main() {
     case "${1:-}" in
         apply)
             apply_realm
+            ;;
+        reset)
+            reset_realm
             ;;
         -h|--help|help|'')
             usage
