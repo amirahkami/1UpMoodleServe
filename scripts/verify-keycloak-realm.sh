@@ -242,7 +242,7 @@ check_users() {
     local bad_email_count
     local username
 
-    users_json="$(kc get users -r "${KEYCLOAK_REALM}" --max 200 2>/dev/null || true)"
+    users_json="$(kc get users -r "${KEYCLOAK_REALM}" -q max=200 2>/dev/null || true)"
     user_count="$(printf '%s\n' "${users_json}" | grep -Ec '"username"[[:space:]]*:')"
 
     if [[ "${user_count}" -eq "${EXPECTED_USER_COUNT}" ]]; then
@@ -252,7 +252,9 @@ check_users() {
     fi
 
     bad_email_count="$(printf '%s\n' "${users_json}" | grep -E '"email"[[:space:]]*:' | grep -Fvc "@${KEYCLOAK_SEED_EMAIL_DOMAIN}\"" || true)"
-    if [[ "${bad_email_count}" -eq 0 ]]; then
+    if [[ "${user_count}" -eq 0 ]]; then
+        fail "Cannot verify user emails because no users were returned"
+    elif [[ "${bad_email_count}" -eq 0 ]]; then
         pass "All listed user emails end with @${KEYCLOAK_SEED_EMAIL_DOMAIN}"
     else
         fail "${bad_email_count} listed user emails do not end with @${KEYCLOAK_SEED_EMAIL_DOMAIN}"
