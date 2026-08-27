@@ -35,11 +35,13 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY php.ini /usr/local/etc/php/conf.d/99-1upmoodleserve.ini
+
+RUN mkdir -p /var/moodledata /var/www/html \
+    && chown -R www-data:www-data /var/moodledata /var/www/html /usr/src/moodle
+
 COPY docker-entrypoint.sh /usr/local/bin/1upmoodleserve-moodle-entrypoint
 
-RUN chmod +x /usr/local/bin/1upmoodleserve-moodle-entrypoint \
-    && mkdir -p /var/moodledata /var/www/html \
-    && chown -R www-data:www-data /var/moodledata /var/www/html /usr/src/moodle
+RUN chmod +x /usr/local/bin/1upmoodleserve-moodle-entrypoint
 
 ENTRYPOINT ["1upmoodleserve-moodle-entrypoint"]
 CMD ["php-fpm"]
