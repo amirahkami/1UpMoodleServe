@@ -238,11 +238,13 @@ check_users() {
     section "Users"
 
     local users_json
+    local usernames
     local user_count
     local bad_email_count
     local username
 
     users_json="$(kc get users -r "${KEYCLOAK_REALM}" -q max=200 2>/dev/null || true)"
+    usernames="$(printf '%s\n' "${users_json}" | sed -n 's/.*"username"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
     user_count="$(printf '%s\n' "${users_json}" | grep -Ec '"username"[[:space:]]*:')"
 
     if [[ "${user_count}" -eq "${EXPECTED_USER_COUNT}" ]]; then
@@ -261,12 +263,18 @@ check_users() {
     fi
 
     for username in sara.shirazi anna.vanbreda amar.lagosi rhea.coimbra; do
-        if printf '%s\n' "${users_json}" | grep -Eq "\"username\"[[:space:]]*:[[:space:]]*\"${username}\""; then
+        if printf '%s\n' "${usernames}" | grep -Fxq "${username}"; then
             pass "Sample user exists: ${username}"
         else
             fail "Sample user missing: ${username}"
         fi
     done
+
+    if printf '%s\n' "${usernames}" | grep -Eq '^(student|alumni|guest)[0-9]+$'; then
+        fail "Numbered placeholder usernames are present"
+    else
+        pass "No numbered placeholder usernames found"
+    fi
 }
 
 check_public_discovery() {
