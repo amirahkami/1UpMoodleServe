@@ -14,4 +14,4 @@ Renewal check:
 bash scripts/https.sh renew
 ```
 
-The initial issue command temporarily uses the HTTP Nginx config for ACME validation, then switches `.env` to `NGINX_CONF_DIR=./docker/nginx/https.d` and `MOODLE_WWWROOT=https://moodle.unrealuni.xyz`.
+The initial issue command generates HTTP Nginx config for ACME validation, then switches `.env` to the generated HTTPS config directory and sets `MOODLE_WWWROOT=https://<MOODLE_DOMAIN>`.

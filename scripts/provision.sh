@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-APP_NAME="1upmoodleserve"
+APP_NAME="${APP_NAME:-1upmoodleserve}"
 APP_DIR="/opt/${APP_NAME}"
 DOCKER_GPG="/etc/apt/keyrings/docker.asc"
 DOCKER_SOURCE="/etc/apt/sources.list.d/docker.sources"

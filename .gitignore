@@ -19,6 +19,7 @@ vendor/
 
 tmp/
 *.tmp
+.generated/
 
 certbot/conf/
 certbot/www/

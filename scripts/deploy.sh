@@ -3,8 +3,10 @@
 
 set -euo pipefail
 
-APP_DIR="/opt/1upmoodleserve"
-ENV_FILE=".env"
+APP_DIR="${APP_DIR:-/opt/1upmoodleserve}"
+ENV_FILE="${ENV_FILE:-.env}"
+GENERATED_HTTP_CONF_DIR="./.generated/nginx/http.d"
+GENERATED_HTTPS_CONF_DIR="./.generated/nginx/https.d"
 
 if [[ -t 1 ]]; then
     RED='\033[0;31m'
@@ -60,6 +62,48 @@ require_env_file() {
     ok "${ENV_FILE} exists and contains no CHANGE_ME placeholders."
 }
 
+env_get() {
+    local key="$1"
+    local default="${2:-}"
+    local value
+
+    value="$(awk -F= -v key="${key}" '$1 == key { sub(/^[^=]*=/, ""); print; found=1 } END { if (!found) exit 1 }' "${ENV_FILE}" 2>/dev/null || true)"
+    value="${value%\"}"
+    value="${value#\"}"
+
+    if [[ -z "${value}" ]]; then
+        printf '%s\n' "${default}"
+    else
+        printf '%s\n' "${value}"
+    fi
+}
+
+env_set() {
+    local key="$1"
+    local value="$2"
+    local tmp
+
+    tmp="$(mktemp)"
+    awk -v key="${key}" -v value="${value}" '
+        BEGIN { done=0 }
+        $0 ~ "^" key "=" {
+            if (!done) {
+                print key "=" value
+                done=1
+            }
+            next
+        }
+        { print }
+        END {
+            if (!done) {
+                print key "=" value
+            }
+        }
+    ' "${ENV_FILE}" > "${tmp}"
+    mv "${tmp}" "${ENV_FILE}"
+    chmod 600 "${ENV_FILE}"
+}
+
 require_commands() {
     section "Validate required commands"
 
@@ -77,6 +121,29 @@ compose_config() {
     docker compose --env-file "${ENV_FILE}" config >/dev/null
 
     ok "Docker Compose configuration is valid."
+}
+
+configure_nginx() {
+    section "Generate Nginx configuration"
+
+    local conf_dir
+    local mode
+    conf_dir="$(env_get NGINX_CONF_DIR "${GENERATED_HTTP_CONF_DIR}")"
+
+    case "${conf_dir}" in
+        *https.d) mode="https" ;;
+        *) mode="http" ;;
+    esac
+
+    bash scripts/nginx-config.sh generate "${mode}"
+
+    if [[ "${mode}" == "https" ]]; then
+        env_set NGINX_CONF_DIR "${GENERATED_HTTPS_CONF_DIR}"
+    else
+        env_set NGINX_CONF_DIR "${GENERATED_HTTP_CONF_DIR}"
+    fi
+
+    ok "Nginx ${mode} configuration is selected."
 }
 
 build_images() {
@@ -100,11 +167,22 @@ show_status() {
 
     docker compose --env-file "${ENV_FILE}" ps
 
+    local moodle_domain
+    local keycloak_domain
+    local moodle_wwwroot
+    local keycloak_scheme
+    moodle_domain="$(env_get MOODLE_DOMAIN)"
+    keycloak_domain="$(env_get KEYCLOAK_DOMAIN)"
+    moodle_wwwroot="$(env_get MOODLE_WWWROOT "http://${moodle_domain}")"
+    keycloak_scheme="http"
+    if [[ "${moodle_wwwroot}" == https://* ]]; then
+        keycloak_scheme="https"
+    fi
+
     echo ""
-    info "HTTP bootstrap endpoints:"
-    info "  http://moodle.unrealuni.xyz"
-    info "  http://iam.unrealuni.xyz"
-    warn "HTTPS is not configured by this script yet."
+    info "Configured endpoints:"
+    info "  ${moodle_wwwroot}"
+    info "  ${keycloak_scheme}://${keycloak_domain}"
 }
 
 main() {
@@ -112,6 +190,7 @@ main() {
     warn_if_not_app_dir
     require_env_file
     require_commands
+    configure_nginx
     compose_config
     build_images
     start_stack

@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# Create/update the Moodle-focused UnrealUni Keycloak realm.
+# Create/update the Keycloak realm from repo-owned JSON desired state.
 
 set -euo pipefail
 
-ENV_FILE=".env"
-REALM_DEFAULT="unrealuni"
-MOODLE_CLIENT_ID_DEFAULT="moodle"
-MOODLE_DOMAIN_DEFAULT="moodle.unrealuni.xyz"
+ENV_FILE="${ENV_FILE:-.env}"
+KEYCLOAK_REALM_FILE="${KEYCLOAK_REALM_FILE:-data/keycloak-realm.json}"
+KEYCLOAK_USERS_FILE="${KEYCLOAK_USERS_FILE:-data/keycloak-users.json}"
 
 if [[ -t 1 ]]; then
     RED='\033[0;31m'
@@ -39,22 +38,16 @@ usage() {
     cat <<'EOF'
 Usage:
   bash scripts/keycloak-realm.sh apply
-  CONFIRM_KEYCLOAK_REALM_RESET=unrealuni bash scripts/keycloak-realm.sh reset
+  CONFIRM_KEYCLOAK_REALM_RESET=<realm-name> bash scripts/keycloak-realm.sh reset
 
-Creates/updates:
-  realm: unrealuni
-  client: moodle
-  groups: Faculty of Medicine, Faculty of Humanities, Faculty of Engineering, IT-Services, Finance
-  realm roles: student, staff, alumni, guest
-  Moodle client roles: admin, manager, course_creator, teacher, student, guest
-  OIDC claims: groups, primary_group, university_role, moodle_roles
-  seeded users: 50 students, 20 staff, 50 alumni, 10 guests
+Reads desired state from:
+  data/keycloak-realm.json
+  data/keycloak-users.json
 
-Required .env values:
+Secrets still come from .env:
   KEYCLOAK_ADMIN
   KEYCLOAK_ADMIN_PASSWORD
   KEYCLOAK_MOODLE_CLIENT_SECRET
-  KEYCLOAK_SEED_USER_PASSWORD
 EOF
 }
 
@@ -64,6 +57,18 @@ require_repo_root() {
 
 require_env_file() {
     [[ -f "${ENV_FILE}" ]] || die "Missing ${ENV_FILE}. Create it on the VPS first."
+}
+
+require_data_files() {
+    [[ -f "${KEYCLOAK_REALM_FILE}" ]] || die "Missing ${KEYCLOAK_REALM_FILE}."
+    [[ -f "${KEYCLOAK_USERS_FILE}" ]] || die "Missing ${KEYCLOAK_USERS_FILE}."
+}
+
+require_commands() {
+    command -v jq >/dev/null 2>&1 || die "jq command not found. Run scripts/provision.sh first."
+    command -v docker >/dev/null 2>&1 || die "docker command not found."
+    docker compose version >/dev/null 2>&1 || die "docker compose plugin not found."
+    docker info >/dev/null 2>&1 || die "Current user cannot access Docker."
 }
 
 env_get() {
@@ -82,33 +87,64 @@ env_get() {
     fi
 }
 
+json_get() {
+    local file="$1"
+    local expression="$2"
+    jq -er "${expression}" "${file}"
+}
+
+validate_data() {
+    section "Validate desired state"
+
+    jq -e '
+        (.realm.name | type == "string" and length > 0) and
+        (.client.clientId | type == "string" and length > 0) and
+        (.realmRoles | type == "array" and length > 0) and
+        (.clientRoles | type == "array" and length > 0) and
+        (.groups | type == "array" and length > 0) and
+        (.protocolMappers | type == "array" and length > 0) and
+        (.seed.emailDomain | type == "string" and length > 0) and
+        (.seed.passwordPattern | type == "string" and contains("{username}")) and
+        (.seed.temporaryPassword | type == "boolean")
+    ' "${KEYCLOAK_REALM_FILE}" >/dev/null || die "Invalid ${KEYCLOAK_REALM_FILE}."
+
+    jq -e '
+        (.users | type == "array" and length > 0) and
+        all(.users[]; (.username | type == "string" and length > 0) and
+                      (.firstName | type == "string" and length > 0) and
+                      (.lastName | type == "string" and length > 0) and
+                      (.universityRole | type == "string" and length > 0)) and
+        (([.users[].username] | length) == ([.users[].username] | unique | length))
+    ' "${KEYCLOAK_USERS_FILE}" >/dev/null || die "Invalid ${KEYCLOAK_USERS_FILE}."
+
+    ok "Desired-state JSON is valid."
+}
+
 load_env() {
     KEYCLOAK_ADMIN="$(env_get KEYCLOAK_ADMIN)"
     KEYCLOAK_ADMIN_PASSWORD="$(env_get KEYCLOAK_ADMIN_PASSWORD)"
-    KEYCLOAK_REALM="$(env_get KEYCLOAK_REALM "${REALM_DEFAULT}")"
-    KEYCLOAK_MOODLE_CLIENT_ID="$(env_get KEYCLOAK_MOODLE_CLIENT_ID "${MOODLE_CLIENT_ID_DEFAULT}")"
     KEYCLOAK_MOODLE_CLIENT_SECRET="$(env_get KEYCLOAK_MOODLE_CLIENT_SECRET)"
-    KEYCLOAK_SEED_USER_PASSWORD="$(env_get KEYCLOAK_SEED_USER_PASSWORD)"
-    KEYCLOAK_SEED_EMAIL_DOMAIN="$(env_get KEYCLOAK_SEED_EMAIL_DOMAIN "unrealuni.xyz")"
-    KEYCLOAK_DOMAIN="$(env_get KEYCLOAK_DOMAIN "iam.unrealuni.xyz")"
-    MOODLE_DOMAIN="$(env_get MOODLE_DOMAIN "${MOODLE_DOMAIN_DEFAULT}")"
+    KEYCLOAK_DOMAIN="$(env_get KEYCLOAK_DOMAIN)"
+    MOODLE_DOMAIN="$(env_get MOODLE_DOMAIN)"
+    MOODLE_OAUTH2_CALLBACK_PATH="$(env_get MOODLE_OAUTH2_CALLBACK_PATH "/admin/oauth2callback.php")"
 
-    [[ -n "${KEYCLOAK_ADMIN}" ]] || die "KEYCLOAK_ADMIN is required in .env."
-    [[ -n "${KEYCLOAK_ADMIN_PASSWORD}" ]] || die "KEYCLOAK_ADMIN_PASSWORD is required in .env."
-    [[ -n "${KEYCLOAK_MOODLE_CLIENT_SECRET}" ]] || die "KEYCLOAK_MOODLE_CLIENT_SECRET is required in .env."
-    [[ -n "${KEYCLOAK_SEED_USER_PASSWORD}" ]] || die "KEYCLOAK_SEED_USER_PASSWORD is required in .env."
+    KEYCLOAK_REALM="$(json_get "${KEYCLOAK_REALM_FILE}" '.realm.name')"
+    KEYCLOAK_MOODLE_CLIENT_ID="$(json_get "${KEYCLOAK_REALM_FILE}" '.client.clientId')"
+    KEYCLOAK_SEED_EMAIL_DOMAIN="$(json_get "${KEYCLOAK_REALM_FILE}" '.seed.emailDomain')"
+    KEYCLOAK_SEED_PASSWORD_PATTERN="$(json_get "${KEYCLOAK_REALM_FILE}" '.seed.passwordPattern')"
+    KEYCLOAK_SEED_PASSWORD_TEMPORARY="$(json_get "${KEYCLOAK_REALM_FILE}" '.seed.temporaryPassword')"
+    EXPECTED_USER_COUNT="$(jq -r '.users | length' "${KEYCLOAK_USERS_FILE}")"
+
+    [[ -n "${KEYCLOAK_ADMIN}" ]] || die "KEYCLOAK_ADMIN is required in ${ENV_FILE}."
+    [[ -n "${KEYCLOAK_ADMIN_PASSWORD}" ]] || die "KEYCLOAK_ADMIN_PASSWORD is required in ${ENV_FILE}."
+    [[ -n "${KEYCLOAK_MOODLE_CLIENT_SECRET}" ]] || die "KEYCLOAK_MOODLE_CLIENT_SECRET is required in ${ENV_FILE}."
+    [[ -n "${KEYCLOAK_DOMAIN}" ]] || die "KEYCLOAK_DOMAIN is required in ${ENV_FILE}."
+    [[ -n "${MOODLE_DOMAIN}" ]] || die "MOODLE_DOMAIN is required in ${ENV_FILE}."
 
     [[ "${KEYCLOAK_MOODLE_CLIENT_SECRET}" != *CHANGE_ME* ]] || die "KEYCLOAK_MOODLE_CLIENT_SECRET still contains CHANGE_ME."
-    [[ "${KEYCLOAK_SEED_USER_PASSWORD}" != *CHANGE_ME* ]] || die "KEYCLOAK_SEED_USER_PASSWORD still contains CHANGE_ME."
 
     MOODLE_BASE_URL="https://${MOODLE_DOMAIN}"
-    MOODLE_REDIRECT_URI="${MOODLE_BASE_URL}/*"
-}
-
-require_commands() {
-    command -v docker >/dev/null 2>&1 || die "docker command not found."
-    docker compose version >/dev/null 2>&1 || die "docker compose plugin not found."
-    docker info >/dev/null 2>&1 || die "Current user cannot access Docker."
+    MOODLE_REDIRECT_URI="${MOODLE_BASE_URL}${MOODLE_OAUTH2_CALLBACK_PATH}"
 }
 
 kc() {
@@ -131,27 +167,37 @@ realm_exists() {
     kc get "realms/${KEYCLOAK_REALM}" >/dev/null 2>&1
 }
 
+realm_payload() {
+    jq '{
+        realm: .realm.name,
+        enabled: .realm.enabled,
+        registrationAllowed: .realm.registrationAllowed,
+        resetPasswordAllowed: .realm.resetPasswordAllowed,
+        rememberMe: .realm.rememberMe,
+        sslRequired: .realm.sslRequired
+    }' "${KEYCLOAK_REALM_FILE}"
+}
+
+write_tmp_json() {
+    local tmp
+    tmp="$(mktemp)"
+    cat > "${tmp}"
+    printf '%s\n' "${tmp}"
+}
+
 ensure_realm() {
     section "Realm"
 
+    local tmp
+    tmp="$(realm_payload | write_tmp_json)"
     if realm_exists; then
-        kc update "realms/${KEYCLOAK_REALM}" \
-            -s enabled=true \
-            -s registrationAllowed=false \
-            -s resetPasswordAllowed=true \
-            -s rememberMe=true \
-            -s sslRequired=external >/dev/null
+        kc update "realms/${KEYCLOAK_REALM}" -f "${tmp}" >/dev/null
         ok "Realm ${KEYCLOAK_REALM} updated."
     else
-        kc create realms \
-            -s realm="${KEYCLOAK_REALM}" \
-            -s enabled=true \
-            -s registrationAllowed=false \
-            -s resetPasswordAllowed=true \
-            -s rememberMe=true \
-            -s sslRequired=external >/dev/null
+        kc create realms -f "${tmp}" >/dev/null
         ok "Realm ${KEYCLOAK_REALM} created."
     fi
+    rm -f "${tmp}"
 }
 
 delete_realm() {
@@ -175,10 +221,17 @@ ensure_realm_role() {
     kc create roles -r "${KEYCLOAK_REALM}" -s name="${role}" >/dev/null
 }
 
+group_id() {
+    local group="$1"
+    kc get groups -r "${KEYCLOAK_REALM}" -q "search=${group}" --fields id,name 2>/dev/null \
+        | jq -r --arg group "${group}" '.[] | select(.name == $group) | .id' \
+        | head -n 1
+}
+
 ensure_group() {
     local group="$1"
 
-    if kc get groups -r "${KEYCLOAK_REALM}" -q "search=${group}" | grep -Eq "\"name\"[[:space:]]*:[[:space:]]*\"${group}\""; then
+    if [[ -n "$(group_id "${group}")" ]]; then
         return
     fi
 
@@ -186,45 +239,38 @@ ensure_group() {
 }
 
 client_uuid() {
-    kc get clients -r "${KEYCLOAK_REALM}" -q "clientId=${KEYCLOAK_MOODLE_CLIENT_ID}" --fields id \
-        | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+    kc get clients -r "${KEYCLOAK_REALM}" -q "clientId=${KEYCLOAK_MOODLE_CLIENT_ID}" --fields id,clientId 2>/dev/null \
+        | jq -r --arg clientid "${KEYCLOAK_MOODLE_CLIENT_ID}" '.[] | select(.clientId == $clientid) | .id' \
         | head -n 1
+}
+
+client_payload() {
+    jq \
+        --arg secret "${KEYCLOAK_MOODLE_CLIENT_SECRET}" \
+        --arg redirect_uri "${MOODLE_REDIRECT_URI}" \
+        --arg web_origin "${MOODLE_BASE_URL}" \
+        '.client + {secret: $secret, redirectUris: [$redirect_uri], webOrigins: [$web_origin]}' \
+        "${KEYCLOAK_REALM_FILE}"
 }
 
 ensure_client() {
     section "Moodle client"
 
-    local uuid
+    local uuid tmp
     uuid="$(client_uuid)"
+    tmp="$(client_payload | write_tmp_json)"
 
     if [[ -z "${uuid}" ]]; then
-        kc create clients -r "${KEYCLOAK_REALM}" \
-            -s clientId="${KEYCLOAK_MOODLE_CLIENT_ID}" \
-            -s name="${KEYCLOAK_MOODLE_CLIENT_ID}" \
-            -s enabled=true \
-            -s protocol=openid-connect \
-            -s publicClient=false \
-            -s bearerOnly=false \
-            -s standardFlowEnabled=true \
-            -s implicitFlowEnabled=false \
-            -s directAccessGrantsEnabled=true \
-            -s serviceAccountsEnabled=false \
-            -s secret="${KEYCLOAK_MOODLE_CLIENT_SECRET}" \
-            -s "redirectUris=[\"${MOODLE_REDIRECT_URI}\"]" \
-            -s "webOrigins=[\"${MOODLE_BASE_URL}\"]" >/dev/null
+        kc create clients -r "${KEYCLOAK_REALM}" -f "${tmp}" >/dev/null
         uuid="$(client_uuid)"
         ok "Moodle client created."
     else
-        kc update "clients/${uuid}" -r "${KEYCLOAK_REALM}" \
-            -s enabled=true \
-            -s secret="${KEYCLOAK_MOODLE_CLIENT_SECRET}" \
-            -s "redirectUris=[\"${MOODLE_REDIRECT_URI}\"]" \
-            -s "webOrigins=[\"${MOODLE_BASE_URL}\"]" >/dev/null
+        kc update "clients/${uuid}" -r "${KEYCLOAK_REALM}" -f "${tmp}" >/dev/null
         ok "Moodle client updated."
     fi
+    rm -f "${tmp}"
 
     [[ -n "${uuid}" ]] || die "Could not resolve Keycloak client UUID for ${KEYCLOAK_MOODLE_CLIENT_ID}."
-
     MOODLE_CLIENT_UUID="${uuid}"
 }
 
@@ -238,76 +284,47 @@ ensure_client_role() {
     kc create "clients/${MOODLE_CLIENT_UUID}/roles" -r "${KEYCLOAK_REALM}" -s name="${role}" >/dev/null
 }
 
-mapper_exists() {
+mapper_id() {
     local mapper="$1"
-
-    kc get "clients/${MOODLE_CLIENT_UUID}/protocol-mappers/models" -r "${KEYCLOAK_REALM}" \
-        | grep -Eq "\"name\"[[:space:]]*:[[:space:]]*\"${mapper}\""
+    kc get "clients/${MOODLE_CLIENT_UUID}/protocol-mappers/models" -r "${KEYCLOAK_REALM}" 2>/dev/null \
+        | jq -r --arg mapper "${mapper}" '.[] | select(.name == $mapper) | .id' \
+        | head -n 1
 }
 
-create_mapper_from_json() {
+mapper_payload() {
     local mapper="$1"
-    shift
+    jq \
+        --arg mapper "${mapper}" \
+        --arg clientid "${KEYCLOAK_MOODLE_CLIENT_ID}" \
+        '.protocolMappers[]
+         | select(.name == $mapper)
+         | if (.config | has("usermodel.clientRoleMapping.clientId"))
+           then .config["usermodel.clientRoleMapping.clientId"] = $clientid
+           else .
+           end' \
+        "${KEYCLOAK_REALM_FILE}"
+}
 
-    if mapper_exists "${mapper}"; then
-        return
+ensure_mapper() {
+    local mapper="$1"
+    local id tmp
+
+    id="$(mapper_id "${mapper}")"
+    tmp="$(mapper_payload "${mapper}" | write_tmp_json)"
+    if [[ -z "${id}" ]]; then
+        kc create "clients/${MOODLE_CLIENT_UUID}/protocol-mappers/models" -r "${KEYCLOAK_REALM}" -f "${tmp}" >/dev/null
+    else
+        kc update "clients/${MOODLE_CLIENT_UUID}/protocol-mappers/models/${id}" -r "${KEYCLOAK_REALM}" -f "${tmp}" >/dev/null
     fi
-
-    kc create "clients/${MOODLE_CLIENT_UUID}/protocol-mappers/models" -r "${KEYCLOAK_REALM}" "$@" >/dev/null
+    rm -f "${tmp}"
 }
 
 ensure_mappers() {
     section "OIDC claim mappers"
 
-    create_mapper_from_json "groups" \
-        -s name=groups \
-        -s protocol=openid-connect \
-        -s protocolMapper=oidc-group-membership-mapper \
-        -s consentRequired=false \
-        -s 'config."full.path"=false' \
-        -s 'config."id.token.claim"=true' \
-        -s 'config."access.token.claim"=true' \
-        -s 'config."userinfo.token.claim"=true' \
-        -s 'config."claim.name"=groups' \
-        -s 'config."jsonType.label"=String'
-
-    create_mapper_from_json "primary_group" \
-        -s name=primary_group \
-        -s protocol=openid-connect \
-        -s protocolMapper=oidc-usermodel-attribute-mapper \
-        -s consentRequired=false \
-        -s 'config."user.attribute"=primary_group' \
-        -s 'config."claim.name"=primary_group' \
-        -s 'config."jsonType.label"=String' \
-        -s 'config."id.token.claim"=true' \
-        -s 'config."access.token.claim"=true' \
-        -s 'config."userinfo.token.claim"=true'
-
-    create_mapper_from_json "university_role" \
-        -s name=university_role \
-        -s protocol=openid-connect \
-        -s protocolMapper=oidc-usermodel-attribute-mapper \
-        -s consentRequired=false \
-        -s 'config."user.attribute"=university_role' \
-        -s 'config."claim.name"=university_role' \
-        -s 'config."jsonType.label"=String' \
-        -s 'config."id.token.claim"=true' \
-        -s 'config."access.token.claim"=true' \
-        -s 'config."userinfo.token.claim"=true'
-
-    create_mapper_from_json "moodle_roles" \
-        -s name=moodle_roles \
-        -s protocol=openid-connect \
-        -s protocolMapper=oidc-usermodel-client-role-mapper \
-        -s consentRequired=false \
-        -s "config.\"usermodel.clientRoleMapping.clientId\"=${KEYCLOAK_MOODLE_CLIENT_ID}" \
-        -s 'config."claim.name"=moodle_roles' \
-        -s 'config."jsonType.label"=String' \
-        -s 'config."multivalued"=true' \
-        -s 'config."id.token.claim"=true' \
-        -s 'config."access.token.claim"=true' \
-        -s 'config."userinfo.token.claim"=true' \
-        -s 'config."introspection.token.claim"=true'
+    while IFS= read -r mapper; do
+        ensure_mapper "${mapper}"
+    done < <(jq -r '.protocolMappers[].name' "${KEYCLOAK_REALM_FILE}")
 
     ok "OIDC claim mappers ensured."
 }
@@ -315,28 +332,70 @@ ensure_mappers() {
 ensure_roles_and_groups() {
     section "Roles and groups"
 
-    for role in student staff alumni guest; do
+    local role group
+    while IFS= read -r role; do
         ensure_realm_role "${role}"
-    done
+    done < <(jq -r '.realmRoles[]' "${KEYCLOAK_REALM_FILE}")
 
-    for role in admin manager course_creator teacher student guest; do
+    while IFS= read -r role; do
         ensure_client_role "${role}"
-    done
+    done < <(jq -r '.clientRoles[]' "${KEYCLOAK_REALM_FILE}")
 
-    ensure_group "Faculty of Medicine"
-    ensure_group "Faculty of Humanities"
-    ensure_group "Faculty of Engineering"
-    ensure_group "IT-Services"
-    ensure_group "Finance"
+    while IFS= read -r group; do
+        ensure_group "${group}"
+    done < <(jq -r '.groups[]' "${KEYCLOAK_REALM_FILE}")
 
     ok "Realm roles, Moodle roles, and groups ensured."
 }
 
-user_exists() {
+user_id() {
     local username="$1"
+    kc get users -r "${KEYCLOAK_REALM}" -q exact=true -q "username=${username}" --fields id,username 2>/dev/null \
+        | jq -r --arg username "${username}" '.[] | select(.username == $username) | .id' \
+        | head -n 1
+}
 
-    kc get users -r "${KEYCLOAK_REALM}" -q "username=${username}" \
-        | grep -Eq "\"username\"[[:space:]]*:[[:space:]]*\"${username}\""
+render_seed_password() {
+    local username="$1"
+    local first_name="$2"
+    local last_name="$3"
+    local password first_lower last_lower
+
+    first_lower="${first_name,,}"
+    last_lower="${last_name,,}"
+    password="${KEYCLOAK_SEED_PASSWORD_PATTERN}"
+    password="${password//\{username\}/${username}}"
+    password="${password//\{firstName\}/${first_name}}"
+    password="${password//\{lastName\}/${last_name}}"
+    password="${password//\{firstname\}/${first_lower}}"
+    password="${password//\{lastname\}/${last_lower}}"
+    printf '%s\n' "${password}"
+}
+
+set_seed_password() {
+    local username="$1"
+    local first_name="$2"
+    local last_name="$3"
+    local password
+    local args=()
+
+    password="$(render_seed_password "${username}" "${first_name}" "${last_name}")"
+    if [[ "${KEYCLOAK_SEED_PASSWORD_TEMPORARY}" == "true" ]]; then
+        args+=(--temporary)
+    fi
+
+    kc set-password -r "${KEYCLOAK_REALM}" --username "${username}" --new-password "${password}" "${args[@]}" >/dev/null
+}
+
+assign_group() {
+    local userid="$1"
+    local group="$2"
+    local groupid
+
+    [[ -n "${group}" ]] || return
+    groupid="$(group_id "${group}")"
+    [[ -n "${groupid}" ]] || die "Group missing while assigning user: ${group}"
+    kc update "users/${userid}/groups/${groupid}" -r "${KEYCLOAK_REALM}" -s realm="${KEYCLOAK_REALM}" -s userId="${userid}" -s groupId="${groupid}" -n >/dev/null 2>&1 || true
 }
 
 ensure_user() {
@@ -347,32 +406,42 @@ ensure_user() {
     local primary_group="$5"
     local moodle_role="${6:-}"
     local email="${username}@${KEYCLOAK_SEED_EMAIL_DOMAIN}"
+    local userid
+    local create_args
 
-    if ! user_exists "${username}"; then
+    userid="$(user_id "${username}")"
+    if [[ -z "${userid}" ]]; then
+        create_args=(
+            -s username="${username}" \
+            -s enabled=true \
+            -s emailVerified=true \
+            -s firstName="${first_name}" \
+            -s lastName="${last_name}" \
+            -s email="${email}" \
+            -s "attributes.university_role=${university_role}"
+        )
         if [[ -n "${primary_group}" ]]; then
-            kc create users -r "${KEYCLOAK_REALM}" \
-                -s username="${username}" \
-                -s enabled=true \
-                -s emailVerified=true \
-                -s firstName="${first_name}" \
-                -s lastName="${last_name}" \
-                -s email="${email}" \
-                -s "groups=[\"/${primary_group}\"]" \
-                -s "attributes.university_role=${university_role}" \
-                -s "attributes.primary_group=${primary_group}" >/dev/null
-        else
-            kc create users -r "${KEYCLOAK_REALM}" \
-                -s username="${username}" \
-                -s enabled=true \
-                -s emailVerified=true \
-                -s firstName="${first_name}" \
-                -s lastName="${last_name}" \
-                -s email="${email}" \
-                -s "attributes.university_role=${university_role}" >/dev/null
+            create_args+=(
+                -s "groups=[\"/${primary_group}\"]"
+                -s "attributes.primary_group=${primary_group}"
+            )
         fi
-
-        kc set-password -r "${KEYCLOAK_REALM}" --username "${username}" --new-password "${KEYCLOAK_SEED_USER_PASSWORD}" --temporary >/dev/null
+        kc create users -r "${KEYCLOAK_REALM}" "${create_args[@]}" >/dev/null
+        userid="$(user_id "${username}")"
+    else
+        kc update "users/${userid}" -r "${KEYCLOAK_REALM}" \
+            -s enabled=true \
+            -s emailVerified=true \
+            -s firstName="${first_name}" \
+            -s lastName="${last_name}" \
+            -s email="${email}" \
+            -s "attributes.university_role=${university_role}" \
+            -s "attributes.primary_group=${primary_group}" >/dev/null
     fi
+
+    [[ -n "${userid}" ]] || die "Could not resolve user ID for ${username}."
+    assign_group "${userid}" "${primary_group}"
+    set_seed_password "${username}" "${first_name}" "${last_name}"
 
     kc add-roles -r "${KEYCLOAK_REALM}" --uusername "${username}" --rolename "${university_role}" >/dev/null 2>&1 || true
 
@@ -381,176 +450,15 @@ ensure_user() {
     fi
 }
 
-seed_staff_users() {
-    local users=(
-        "anna.vanbreda|Anna|Vanbreda|IT-Services|admin"
-        "hass.lagosi|Hass|Lagosi|IT-Services|admin"
-        "priy.delhiwala|Priy|Delhiwala|IT-Services|admin"
-        "dave.vonmainz|Dave|Vonmainz|IT-Services|admin"
-        "simo.torinese|Simo|Torinese|Faculty of Engineering|manager"
-        "sara.kermani|Sara|Kermani|Faculty of Medicine|manager"
-        "cleo.parisien|Cleo|Parisien|Faculty of Humanities|manager"
-        "rami.lisboeta|Rami|Lisboeta|Faculty of Medicine|course_creator"
-        "mark.oxford|Mark|Oxford|Faculty of Humanities|course_creator"
-        "fati.granadino|Fati|Granadino|Faculty of Engineering|course_creator"
-        "yuki.kobe|Yuki|Kobe|Faculty of Medicine|teacher"
-        "omar.valenciano|Omar|Valenciano|Faculty of Humanities|teacher"
-        "miri.vonbonn|Miri|Vonbonn|Faculty of Engineering|teacher"
-        "lina.vandelft|Lina|Vandelft|Faculty of Medicine|teacher"
-        "alex.berliner|Alex|Berliner|Faculty of Humanities|teacher"
-        "nadi.marseillais|Nadi|Marseillais|Faculty of Engineering|teacher"
-        "dani.york|Dani|York|IT-Services|"
-        "mei.nara|Mei|Nara|Finance|"
-        "reza.kashani|Reza|Kashani|IT-Services|"
-        "rita.sevillano|Rita|Sevillano|Finance|"
-    )
-    local record username first_name last_name primary_group moodle_role
-
-    for record in "${users[@]}"; do
-        IFS='|' read -r username first_name last_name primary_group moodle_role <<< "${record}"
-        ensure_user "${username}" "${first_name}" "${last_name}" "staff" "${primary_group}" "${moodle_role}"
-    done
-}
-
-seed_named_users() {
-    local university_role="$1"
-    local moodle_role="$2"
-    shift 2
-
-    local record username first_name last_name primary_group
-
-    for record in "$@"; do
-        IFS='|' read -r username first_name last_name primary_group <<< "${record}"
-        ensure_user "${username}" "${first_name}" "${last_name}" "${university_role}" "${primary_group}" "${moodle_role}"
-    done
-}
-
 seed_users() {
     section "Seed university users"
 
-    local students=(
-        "sara.shirazi|Sara|Shirazi|Faculty of Medicine"
-        "omar.vandelft|Omar|Vandelft|Faculty of Humanities"
-        "ravi.delhiwala|Ravi|Delhiwala|Faculty of Engineering"
-        "yuki.osaka|Yuki|Osaka|Faculty of Medicine"
-        "lea.vonessen|Lea|Vonessen|Faculty of Humanities"
-        "tom.york|Tom|York|Faculty of Engineering"
-        "mina.milanese|Mina|Milanese|Faculty of Medicine"
-        "zara.lyonnais|Zara|Lyonnais|Faculty of Humanities"
-        "nima.tehrani|Nima|Tehrani|Faculty of Engineering"
-        "hana.kyoto|Hana|Kyoto|Faculty of Medicine"
-        "aria.valenciano|Aria|Valenciano|Faculty of Humanities"
-        "kai.tokyo|Kai|Tokyo|Faculty of Engineering"
-        "lina.vanbreda|Lina|Vanbreda|Faculty of Medicine"
-        "amir.lahori|Amir|Lahori|Faculty of Humanities"
-        "nora.bath|Nora|Bath|Faculty of Engineering"
-        "maya.vanleiden|Maya|Vanleiden|Faculty of Medicine"
-        "noor.kermani|Noor|Kermani|Faculty of Humanities"
-        "luca.romano|Luca|Romano|Faculty of Engineering"
-        "sana.hyderabadi|Sana|Hyderabadi|Faculty of Medicine"
-        "ivan.vanburen|Ivan|Vanburen|Faculty of Humanities"
-        "rosa.sevillano|Rosa|Sevillano|Faculty of Engineering"
-        "ali.ankarali|Ali|Ankarali|Faculty of Medicine"
-        "mei.kobe|Mei|Kobe|Faculty of Humanities"
-        "emma.london|Emma|London|Faculty of Engineering"
-        "reza.yazdi|Reza|Yazdi|Faculty of Medicine"
-        "mila.vonkoln|Mila|Vonkoln|Faculty of Humanities"
-        "pavi.madurai|Pavi|Madurai|Faculty of Engineering"
-        "luc.parisien|Luc|Parisien|Faculty of Medicine"
-        "dara.tabrizi|Dara|Tabrizi|Faculty of Humanities"
-        "yara.izmirli|Yara|Izmirli|Faculty of Engineering"
-        "hugo.vontrier|Hugo|Vontrier|Faculty of Medicine"
-        "ines.lisboeta|Ines|Lisboeta|Faculty of Humanities"
-        "sami.lagosi|Sami|Lagosi|Faculty of Engineering"
-        "ruby.kent|Ruby|Kent|Faculty of Medicine"
-        "tara.genovese|Tara|Genovese|Faculty of Humanities"
-        "adam.prager|Adam|Prager|Faculty of Engineering"
-        "lila.kashani|Lila|Kashani|Faculty of Medicine"
-        "pino.napolitano|Pino|Napolitano|Faculty of Humanities"
-        "timo.vankampen|Timo|Vankampen|Faculty of Engineering"
-        "eda.istanbullu|Eda|Istanbullu|Faculty of Medicine"
-        "rami.torinese|Rami|Torinese|Faculty of Humanities"
-        "eva.toledano|Eva|Toledano|Faculty of Engineering"
-        "yuna.nara|Yuna|Nara|Faculty of Medicine"
-        "alma.granadino|Alma|Granadino|Faculty of Humanities"
-        "zain.coimbra|Zain|Coimbra|Faculty of Engineering"
-        "nina.nicois|Nina|Nicois|Faculty of Medicine"
-        "olga.vonbonn|Olga|Vonbonn|Faculty of Humanities"
-        "mona.alexandri|Mona|Alexandri|Faculty of Engineering"
-        "jona.dubliner|Jona|Dubliner|Faculty of Medicine"
-        "fari.isfahani|Fari|Isfahani|Faculty of Humanities"
-    )
-    local alumni=(
-        "amar.lagosi|Amar|Lagosi|Faculty of Medicine"
-        "tara.shirazi|Tara|Shirazi|Faculty of Humanities"
-        "kian.dubliner|Kian|Dubliner|Faculty of Engineering"
-        "jin.osaka|Jin|Osaka|Faculty of Medicine"
-        "mara.granadino|Mara|Granadino|Faculty of Humanities"
-        "ali.tehrani|Ali|Tehrani|Faculty of Engineering"
-        "lynn.london|Lynn|London|Faculty of Medicine"
-        "sana.lahori|Sana|Lahori|Faculty of Humanities"
-        "idri.vankampen|Idri|Vankampen|Faculty of Engineering"
-        "lila.vonessen|Lila|Vonessen|Faculty of Medicine"
-        "eva.napolitano|Eva|Napolitano|Faculty of Humanities"
-        "nadi.tabrizi|Nadi|Tabrizi|Faculty of Engineering"
-        "andi.coimbra|Andi|Coimbra|Faculty of Medicine"
-        "aya.kyoto|Aya|Kyoto|Faculty of Humanities"
-        "amin.lagosi|Amin|Lagosi|Faculty of Engineering"
-        "niko.vontrier|Niko|Vontrier|Faculty of Medicine"
-        "seli.ankarali|Seli|Ankarali|Faculty of Humanities"
-        "mate.valenciano|Mate|Valenciano|Faculty of Engineering"
-        "ivy.canton|Ivy|Canton|Faculty of Medicine"
-        "ola.kashani|Ola|Kashani|Faculty of Humanities"
-        "rani.vanleiden|Rani|Vanleiden|Faculty of Engineering"
-        "marc.romano|Marc|Romano|Faculty of Medicine"
-        "brun.lisboeta|Brun|Lisboeta|Faculty of Humanities"
-        "nour.kermani|Nour|Kermani|Faculty of Engineering"
-        "erik.vankampen|Erik|Vankampen|Faculty of Medicine"
-        "dali.vandelft|Dali|Vandelft|Faculty of Humanities"
-        "theo.parisien|Theo|Parisien|Faculty of Engineering"
-        "nia.bath|Nia|Bath|Faculty of Medicine"
-        "muna.alexandri|Muna|Alexandri|Faculty of Humanities"
-        "kira.vanburen|Kira|Vanburen|Faculty of Engineering"
-        "jan.prager|Jan|Prager|Faculty of Medicine"
-        "yusu.istanbullu|Yusu|Istanbullu|Faculty of Humanities"
-        "reem.bergen|Reem|Bergen|Faculty of Engineering"
-        "liam.kent|Liam|Kent|Faculty of Medicine"
-        "anik.kermani|Anik|Kermani|Faculty of Humanities"
-        "toma.vonulm|Toma|Vonulm|Faculty of Engineering"
-        "ines.nicois|Ines|Nicois|Faculty of Medicine"
-        "jami.vonkoln|Jami|Vonkoln|Faculty of Humanities"
-        "raya.lyonnais|Raya|Lyonnais|Faculty of Engineering"
-        "lina.vanleiden|Lina|Vanleiden|Faculty of Medicine"
-        "nola.camden|Nola|Camden|Faculty of Humanities"
-        "ema.milanese|Ema|Milanese|Faculty of Engineering"
-        "maks.berliner|Maks|Berliner|Faculty of Medicine"
-        "alan.toledano|Alan|Toledano|Faculty of Humanities"
-        "zara.torinese|Zara|Torinese|Faculty of Engineering"
-        "paru.madurai|Paru|Madurai|Faculty of Medicine"
-        "mila.vonmainz|Mila|Vonmainz|Faculty of Humanities"
-        "rafi.delhiwala|Rafi|Delhiwala|Faculty of Engineering"
-        "hana.tokyo|Hana|Tokyo|Faculty of Medicine"
-        "sara.hyderabadi|Sara|Hyderabadi|Faculty of Humanities"
-    )
-    local guests=(
-        "rhea.coimbra|Rhea|Coimbra|"
-        "alan.york|Alan|York|"
-        "mia.parisien|Mia|Parisien|"
-        "ilan.vandelft|Ilan|Vandelft|"
-        "sia.toledo|Sia|Toledo|"
-        "tim.kent|Tim|Kent|"
-        "una.bath|Una|Bath|"
-        "max.bergen|Max|Bergen|"
-        "lia.nara|Lia|Nara|"
-        "ian.kobe|Ian|Kobe|"
-    )
+    local row username first_name last_name university_role primary_group moodle_role
+    while IFS=$'\t' read -r username first_name last_name university_role primary_group moodle_role; do
+        ensure_user "${username}" "${first_name}" "${last_name}" "${university_role}" "${primary_group}" "${moodle_role}"
+    done < <(jq -r '.users[] | [.username, .firstName, .lastName, .universityRole, (.primaryGroup // ""), (.moodleRole // "")] | @tsv' "${KEYCLOAK_USERS_FILE}")
 
-    seed_staff_users
-    seed_named_users "student" "student" "${students[@]}"
-    seed_named_users "alumni" "student" "${alumni[@]}"
-    seed_named_users "guest" "guest" "${guests[@]}"
-
-    ok "Seed users ensured: 50 students, 20 staff, 50 alumni, 10 guests."
+    ok "Seed users ensured: ${EXPECTED_USER_COUNT}."
 }
 
 show_summary() {
@@ -561,14 +469,21 @@ show_summary() {
     info "Issuer: https://${KEYCLOAK_DOMAIN}/realms/${KEYCLOAK_REALM}"
     info "Moodle redirect URI: ${MOODLE_REDIRECT_URI}"
     info "Seed user email domain: ${KEYCLOAK_SEED_EMAIL_DOMAIN}"
-    info "Seeded user password is temporary and must be changed on first login."
+    info "Seed password pattern: ${KEYCLOAK_SEED_PASSWORD_PATTERN}"
+    info "Seed passwords temporary: ${KEYCLOAK_SEED_PASSWORD_TEMPORARY}"
+}
+
+load_and_validate() {
+    require_repo_root
+    require_env_file
+    require_data_files
+    require_commands
+    validate_data
+    load_env
 }
 
 apply_realm() {
-    require_repo_root
-    require_env_file
-    load_env
-    require_commands
+    load_and_validate
     authenticate
     ensure_realm
     ensure_client
@@ -579,10 +494,7 @@ apply_realm() {
 }
 
 reset_realm() {
-    require_repo_root
-    require_env_file
-    load_env
-    require_commands
+    load_and_validate
 
     [[ "${CONFIRM_KEYCLOAK_REALM_RESET:-}" == "${KEYCLOAK_REALM}" ]] || die "Set CONFIRM_KEYCLOAK_REALM_RESET=${KEYCLOAK_REALM} to reset this realm."
 

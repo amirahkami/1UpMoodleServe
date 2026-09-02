@@ -22,6 +22,8 @@ The target is a fresh Ubuntu 24.04 VPS that can be repeatedly prepared and deplo
 - Keycloak: `iam.unrealuni.xyz`
 
 Both records should point to the VPS and stay DNS-only in Cloudflare during setup.
+For a different university or VPS, change the domain values in the VPS `.env`;
+the Nginx virtual hosts are generated from those values.
 
 ## VPS Target
 
@@ -41,6 +43,8 @@ bash scripts/deploy.sh
 bash scripts/https.sh issue
 bash scripts/keycloak-realm.sh apply
 bash scripts/verify-keycloak-realm.sh
+bash scripts/moodle-oidc.sh apply
+bash scripts/moodle-oidc.sh verify
 ```
 
 `provision.sh` prepares the VPS for Docker-based deployment.
@@ -55,9 +59,28 @@ bash scripts/verify-keycloak-realm.sh
 
 `https.sh issue` obtains the initial Let's Encrypt certificate and switches the stack to HTTPS.
 
-`keycloak-realm.sh apply` creates/updates the Moodle-focused `unrealuni` Keycloak realm.
+`nginx-config.sh` generates Nginx configs under `.generated/nginx/` from `.env`.
+`deploy.sh` and `https.sh` call it automatically.
 
-`verify-keycloak-realm.sh` checks the live Keycloak realm without changing it.
+`keycloak-realm.sh apply` creates/updates the Keycloak realm from `data/keycloak-realm.json` and `data/keycloak-users.json`.
+
+`verify-keycloak-realm.sh` checks the live Keycloak realm against the same JSON files without changing it.
+
+`moodle-oidc.sh apply` configures Moodle's built-in OAuth2 authentication using `data/moodle-oidc.json`.
+
+`moodle-oidc.sh verify` checks Moodle-side OAuth2/OIDC configuration without changing it.
+
+## Desired State
+
+Non-secret platform state is committed under `data/`:
+
+```text
+data/keycloak-realm.json  realm, client, roles, groups, mappers, seed password pattern
+data/keycloak-users.json  seeded users
+data/moodle-oidc.json     Moodle OAuth2 issuer defaults and field mappings
+```
+
+Seeded user passwords are deterministic. With the current pattern, user `sara.shirazi` logs in with `sara.shirazi@unrealuni`.
 
 ## Secrets
 
@@ -73,3 +96,5 @@ Use:
 ## Durable Context
 
 Read `MEMORY.md` before resuming work in a new session.
+
+For the target end-to-end deployment order, use `runbooks/fresh-vps.md`.

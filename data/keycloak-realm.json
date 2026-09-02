@@ -1,0 +1,108 @@
+{
+  "realm": {
+    "name": "unrealuni",
+    "enabled": true,
+    "registrationAllowed": false,
+    "resetPasswordAllowed": true,
+    "rememberMe": true,
+    "sslRequired": "external"
+  },
+  "client": {
+    "clientId": "moodle",
+    "name": "moodle",
+    "enabled": true,
+    "protocol": "openid-connect",
+    "publicClient": false,
+    "bearerOnly": false,
+    "standardFlowEnabled": true,
+    "implicitFlowEnabled": false,
+    "directAccessGrantsEnabled": true,
+    "serviceAccountsEnabled": false
+  },
+  "realmRoles": [
+    "student",
+    "staff",
+    "alumni",
+    "guest"
+  ],
+  "clientRoles": [
+    "admin",
+    "manager",
+    "course_creator",
+    "teacher",
+    "student",
+    "guest"
+  ],
+  "groups": [
+    "Faculty of Medicine",
+    "Faculty of Humanities",
+    "Faculty of Engineering",
+    "IT-Services",
+    "Finance"
+  ],
+  "seed": {
+    "emailDomain": "unrealuni.xyz",
+    "passwordPattern": "{username}@unrealuni",
+    "temporaryPassword": false
+  },
+  "protocolMappers": [
+    {
+      "name": "groups",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-group-membership-mapper",
+      "consentRequired": false,
+      "config": {
+        "full.path": "false",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true",
+        "claim.name": "groups",
+        "jsonType.label": "String"
+      }
+    },
+    {
+      "name": "primary_group",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.attribute": "primary_group",
+        "claim.name": "primary_group",
+        "jsonType.label": "String",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true"
+      }
+    },
+    {
+      "name": "university_role",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.attribute": "university_role",
+        "claim.name": "university_role",
+        "jsonType.label": "String",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true"
+      }
+    },
+    {
+      "name": "moodle_roles",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-client-role-mapper",
+      "consentRequired": false,
+      "config": {
+        "usermodel.clientRoleMapping.clientId": "moodle",
+        "claim.name": "moodle_roles",
+        "jsonType.label": "String",
+        "multivalued": "true",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true",
+        "introspection.token.claim": "true"
+      }
+    }
+  ]
+}

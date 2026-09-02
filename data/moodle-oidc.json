@@ -1,0 +1,27 @@
+{
+  "issuer": {
+    "name": "UnrealUni Keycloak",
+    "loginName": "UnrealUni Login",
+    "scopes": "openid profile email",
+    "requireConfirmation": false,
+    "allowAccountCreation": true
+  },
+  "fieldMappings": [
+    {
+      "external": "preferred_username",
+      "internal": "username"
+    },
+    {
+      "external": "email",
+      "internal": "email"
+    },
+    {
+      "external": "given_name",
+      "internal": "firstname"
+    },
+    {
+      "external": "family_name",
+      "internal": "lastname"
+    }
+  ]
+}

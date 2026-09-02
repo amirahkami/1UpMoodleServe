@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
-# Read-only verification for the UnrealUni Keycloak realm.
+# Read-only verification for the Keycloak realm against repo-owned JSON desired state.
 
 set -uo pipefail
 
-ENV_FILE=".env"
-REALM_DEFAULT="unrealuni"
-MOODLE_CLIENT_ID_DEFAULT="moodle"
-MOODLE_DOMAIN_DEFAULT="moodle.unrealuni.xyz"
-EXPECTED_USER_COUNT=130
-EXPECTED_GROUP_COUNT=5
+ENV_FILE="${ENV_FILE:-.env}"
+KEYCLOAK_REALM_FILE="${KEYCLOAK_REALM_FILE:-data/keycloak-realm.json}"
+KEYCLOAK_USERS_FILE="${KEYCLOAK_USERS_FILE:-data/keycloak-users.json}"
 
 if [[ -t 1 ]]; then
     RED='\033[0;31m'
@@ -39,20 +36,6 @@ section() {
     echo -e "${BOLD}${CYAN}==> $*${NC}"
 }
 
-require_repo_root() {
-    if [[ ! -f docker-compose.yml ]]; then
-        fail "Run this script from the project root."
-        return 1
-    fi
-}
-
-require_env_file() {
-    if [[ ! -f "${ENV_FILE}" ]]; then
-        fail "Missing ${ENV_FILE}."
-        return 1
-    fi
-}
-
 env_get() {
     local key="$1"
     local default="${2:-}"
@@ -69,23 +52,39 @@ env_get() {
     fi
 }
 
-load_env() {
-    KEYCLOAK_ADMIN="$(env_get KEYCLOAK_ADMIN)"
-    KEYCLOAK_ADMIN_PASSWORD="$(env_get KEYCLOAK_ADMIN_PASSWORD)"
-    KEYCLOAK_REALM="$(env_get KEYCLOAK_REALM "${REALM_DEFAULT}")"
-    KEYCLOAK_MOODLE_CLIENT_ID="$(env_get KEYCLOAK_MOODLE_CLIENT_ID "${MOODLE_CLIENT_ID_DEFAULT}")"
-    KEYCLOAK_SEED_EMAIL_DOMAIN="$(env_get KEYCLOAK_SEED_EMAIL_DOMAIN "unrealuni.xyz")"
-    KEYCLOAK_DOMAIN="$(env_get KEYCLOAK_DOMAIN "iam.unrealuni.xyz")"
-    MOODLE_DOMAIN="$(env_get MOODLE_DOMAIN "${MOODLE_DOMAIN_DEFAULT}")"
+json_get() {
+    local file="$1"
+    local expression="$2"
+    jq -er "${expression}" "${file}"
+}
 
-    MOODLE_BASE_URL="https://${MOODLE_DOMAIN}"
-    MOODLE_REDIRECT_URI="${MOODLE_BASE_URL}/*"
-    KEYCLOAK_ISSUER="https://${KEYCLOAK_DOMAIN}/realms/${KEYCLOAK_REALM}"
+require_repo_root() {
+    if [[ -f docker-compose.yml ]]; then
+        pass "Repository root detected"
+    else
+        fail "Run this script from the project root"
+        return 1
+    fi
+}
+
+require_env_file() {
+    if [[ -f "${ENV_FILE}" ]]; then
+        pass "Environment file exists: ${ENV_FILE}"
+    else
+        fail "Missing ${ENV_FILE}"
+        return 1
+    fi
+}
+
+require_data_files() {
+    [[ -f "${KEYCLOAK_REALM_FILE}" ]] && pass "Realm data exists: ${KEYCLOAK_REALM_FILE}" || fail "Missing ${KEYCLOAK_REALM_FILE}"
+    [[ -f "${KEYCLOAK_USERS_FILE}" ]] && pass "User data exists: ${KEYCLOAK_USERS_FILE}" || fail "Missing ${KEYCLOAK_USERS_FILE}"
 }
 
 require_commands() {
     section "Required commands"
 
+    command -v jq >/dev/null 2>&1 && pass "jq command exists" || fail "jq command not found"
     command -v docker >/dev/null 2>&1 && pass "docker command exists" || fail "docker command not found"
     docker compose version >/dev/null 2>&1 && pass "docker compose plugin exists" || fail "docker compose plugin not found"
 
@@ -94,6 +93,59 @@ require_commands() {
     else
         fail "Current user cannot access Docker"
     fi
+}
+
+validate_data() {
+    section "Desired state files"
+
+    if jq -e '
+        (.realm.name | type == "string" and length > 0) and
+        (.client.clientId | type == "string" and length > 0) and
+        (.realmRoles | type == "array" and length > 0) and
+        (.clientRoles | type == "array" and length > 0) and
+        (.groups | type == "array" and length > 0) and
+        (.protocolMappers | type == "array" and length > 0) and
+        (.seed.emailDomain | type == "string" and length > 0) and
+        (.seed.passwordPattern | type == "string" and contains("{username}")) and
+        (.seed.temporaryPassword | type == "boolean")
+    ' "${KEYCLOAK_REALM_FILE}" >/dev/null 2>&1; then
+        pass "Realm JSON schema is valid"
+    else
+        fail "Realm JSON schema is invalid"
+        return 1
+    fi
+
+    if jq -e '
+        (.users | type == "array" and length > 0) and
+        all(.users[]; (.username | type == "string" and length > 0) and
+                      (.firstName | type == "string" and length > 0) and
+                      (.lastName | type == "string" and length > 0) and
+                      (.universityRole | type == "string" and length > 0)) and
+        (([.users[].username] | length) == ([.users[].username] | unique | length))
+    ' "${KEYCLOAK_USERS_FILE}" >/dev/null 2>&1; then
+        pass "Users JSON schema is valid"
+    else
+        fail "Users JSON schema is invalid"
+        return 1
+    fi
+}
+
+load_env() {
+    KEYCLOAK_ADMIN="$(env_get KEYCLOAK_ADMIN)"
+    KEYCLOAK_ADMIN_PASSWORD="$(env_get KEYCLOAK_ADMIN_PASSWORD)"
+    KEYCLOAK_DOMAIN="$(env_get KEYCLOAK_DOMAIN)"
+    MOODLE_DOMAIN="$(env_get MOODLE_DOMAIN)"
+    MOODLE_OAUTH2_CALLBACK_PATH="$(env_get MOODLE_OAUTH2_CALLBACK_PATH "/admin/oauth2callback.php")"
+
+    KEYCLOAK_REALM="$(json_get "${KEYCLOAK_REALM_FILE}" '.realm.name')"
+    KEYCLOAK_MOODLE_CLIENT_ID="$(json_get "${KEYCLOAK_REALM_FILE}" '.client.clientId')"
+    KEYCLOAK_SEED_EMAIL_DOMAIN="$(json_get "${KEYCLOAK_REALM_FILE}" '.seed.emailDomain')"
+    EXPECTED_USER_COUNT="$(jq -r '.users | length' "${KEYCLOAK_USERS_FILE}")"
+    EXPECTED_GROUP_COUNT="$(jq -r '.groups | length' "${KEYCLOAK_REALM_FILE}")"
+
+    MOODLE_BASE_URL="https://${MOODLE_DOMAIN}"
+    MOODLE_REDIRECT_URI="${MOODLE_BASE_URL}${MOODLE_OAUTH2_CALLBACK_PATH}"
+    KEYCLOAK_ISSUER="https://${KEYCLOAK_DOMAIN}/realms/${KEYCLOAK_REALM}"
 }
 
 kc() {
@@ -115,24 +167,26 @@ authenticate() {
     fi
 }
 
-json_has_name() {
-    local name="$1"
-    grep -Eq "\"name\"[[:space:]]*:[[:space:]]*\"${name}\""
-}
-
 check_realm() {
     section "Realm"
 
-    if kc get "realms/${KEYCLOAK_REALM}" >/dev/null 2>&1; then
-        pass "Realm exists: ${KEYCLOAK_REALM}"
-    else
+    local realm_json key expected actual
+    realm_json="$(kc get "realms/${KEYCLOAK_REALM}" 2>/dev/null || true)"
+    if [[ -z "${realm_json}" ]]; then
         fail "Realm missing: ${KEYCLOAK_REALM}"
+        return
     fi
+    pass "Realm exists: ${KEYCLOAK_REALM}"
+
+    while IFS=$'\t' read -r key expected; do
+        actual="$(printf '%s\n' "${realm_json}" | jq -r --arg key "${key}" '.[$key] | tostring')"
+        [[ "${actual}" == "${expected}" ]] && pass "Realm ${key} matches" || fail "Realm ${key} is ${actual}, expected ${expected}"
+    done < <(jq -r '.realm | to_entries[] | select(.key != "name") | [.key, (.value | tostring)] | @tsv' "${KEYCLOAK_REALM_FILE}")
 }
 
 client_uuid() {
-    kc get clients -r "${KEYCLOAK_REALM}" -q "clientId=${KEYCLOAK_MOODLE_CLIENT_ID}" --fields id 2>/dev/null \
-        | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+    kc get clients -r "${KEYCLOAK_REALM}" -q "clientId=${KEYCLOAK_MOODLE_CLIENT_ID}" --fields id,clientId 2>/dev/null \
+        | jq -r --arg clientid "${KEYCLOAK_MOODLE_CLIENT_ID}" '.[] | select(.clientId == $clientid) | .id' \
         | head -n 1
 }
 
@@ -148,25 +202,33 @@ check_client() {
         return
     fi
 
-    local client_json
+    local client_json key expected actual
     client_json="$(kc get "clients/${MOODLE_CLIENT_UUID}" -r "${KEYCLOAK_REALM}" 2>/dev/null || true)"
 
-    echo "${client_json}" | grep -Eq '"publicClient"[[:space:]]*:[[:space:]]*false' && pass "Moodle client is confidential" || fail "Moodle client is not confidential"
-    echo "${client_json}" | grep -Fq "\"${MOODLE_REDIRECT_URI}\"" && pass "Redirect URI configured: ${MOODLE_REDIRECT_URI}" || fail "Redirect URI missing: ${MOODLE_REDIRECT_URI}"
-    echo "${client_json}" | grep -Fq "\"${MOODLE_BASE_URL}\"" && pass "Web origin configured: ${MOODLE_BASE_URL}" || fail "Web origin missing: ${MOODLE_BASE_URL}"
+    while IFS=$'\t' read -r key expected; do
+        actual="$(printf '%s\n' "${client_json}" | jq -r --arg key "${key}" '.[$key] | tostring')"
+        [[ "${actual}" == "${expected}" ]] && pass "Client ${key} matches" || fail "Client ${key} is ${actual}, expected ${expected}"
+    done < <(jq -r '.client | to_entries[] | [.key, (.value | tostring)] | @tsv' "${KEYCLOAK_REALM_FILE}")
+
+    printf '%s\n' "${client_json}" | jq -e --arg uri "${MOODLE_REDIRECT_URI}" '.redirectUris | index($uri)' >/dev/null 2>&1 \
+        && pass "Redirect URI configured: ${MOODLE_REDIRECT_URI}" \
+        || fail "Redirect URI missing: ${MOODLE_REDIRECT_URI}"
+    printf '%s\n' "${client_json}" | jq -e --arg origin "${MOODLE_BASE_URL}" '.webOrigins | index($origin)' >/dev/null 2>&1 \
+        && pass "Web origin configured: ${MOODLE_BASE_URL}" \
+        || fail "Web origin missing: ${MOODLE_BASE_URL}"
 }
 
 check_realm_roles() {
     section "Realm roles"
 
     local role
-    for role in student staff alumni guest; do
+    while IFS= read -r role; do
         if kc get "roles/${role}" -r "${KEYCLOAK_REALM}" >/dev/null 2>&1; then
             pass "Realm role exists: ${role}"
         else
             fail "Realm role missing: ${role}"
         fi
-    done
+    done < <(jq -r '.realmRoles[]' "${KEYCLOAK_REALM_FILE}")
 }
 
 check_client_roles() {
@@ -178,38 +240,33 @@ check_client_roles() {
     fi
 
     local role
-    for role in admin manager course_creator teacher student guest; do
+    while IFS= read -r role; do
         if kc get "clients/${MOODLE_CLIENT_UUID}/roles/${role}" -r "${KEYCLOAK_REALM}" >/dev/null 2>&1; then
             pass "Moodle client role exists: ${role}"
         else
             fail "Moodle client role missing: ${role}"
         fi
-    done
+    done < <(jq -r '.clientRoles[]' "${KEYCLOAK_REALM_FILE}")
 }
 
 check_groups() {
     section "Groups"
 
-    local groups_json
-    local group_count
-    local group
-
+    local groups_json group_count group
     groups_json="$(kc get groups -r "${KEYCLOAK_REALM}" 2>/dev/null || true)"
-    group_count="$(printf '%s\n' "${groups_json}" | grep -Ec '"name"[[:space:]]*:')"
+    group_count="$(printf '%s\n' "${groups_json}" | jq -r 'length')"
 
-    if [[ "${group_count}" -eq "${EXPECTED_GROUP_COUNT}" ]]; then
-        pass "Group count is ${EXPECTED_GROUP_COUNT}"
-    else
-        fail "Group count is ${group_count}, expected ${EXPECTED_GROUP_COUNT}"
-    fi
+    [[ "${group_count}" -eq "${EXPECTED_GROUP_COUNT}" ]] \
+        && pass "Group count is ${EXPECTED_GROUP_COUNT}" \
+        || fail "Group count is ${group_count}, expected ${EXPECTED_GROUP_COUNT}"
 
-    for group in "Faculty of Medicine" "Faculty of Humanities" "Faculty of Engineering" "IT-Services" "Finance"; do
-        if printf '%s\n' "${groups_json}" | json_has_name "${group}"; then
+    while IFS= read -r group; do
+        if printf '%s\n' "${groups_json}" | jq -e --arg group "${group}" 'any(.[]; .name == $group)' >/dev/null; then
             pass "Group exists: ${group}"
         else
             fail "Group missing: ${group}"
         fi
-    done
+    done < <(jq -r '.groups[]' "${KEYCLOAK_REALM_FILE}")
 }
 
 check_mappers() {
@@ -220,61 +277,42 @@ check_mappers() {
         return
     fi
 
-    local mappers_json
-    local mapper
-
+    local mappers_json mapper
     mappers_json="$(kc get "clients/${MOODLE_CLIENT_UUID}/protocol-mappers/models" -r "${KEYCLOAK_REALM}" 2>/dev/null || true)"
 
-    for mapper in groups primary_group university_role moodle_roles; do
-        if printf '%s\n' "${mappers_json}" | json_has_name "${mapper}"; then
+    while IFS= read -r mapper; do
+        if printf '%s\n' "${mappers_json}" | jq -e --arg mapper "${mapper}" 'any(.[]; .name == $mapper)' >/dev/null; then
             pass "OIDC mapper exists: ${mapper}"
         else
             fail "OIDC mapper missing: ${mapper}"
         fi
-    done
+    done < <(jq -r '.protocolMappers[].name' "${KEYCLOAK_REALM_FILE}")
 }
 
 check_users() {
     section "Users"
 
-    local users_json
-    local usernames
-    local user_count
-    local bad_email_count
-    local username
+    local users_json user_count username expected_email actual_email actual_first actual_last first_name last_name
+    users_json="$(kc get users -r "${KEYCLOAK_REALM}" -q max=500 2>/dev/null || true)"
+    user_count="$(printf '%s\n' "${users_json}" | jq -r 'length')"
 
-    users_json="$(kc get users -r "${KEYCLOAK_REALM}" -q max=200 2>/dev/null || true)"
-    usernames="$(printf '%s\n' "${users_json}" | sed -n 's/.*"username"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
-    user_count="$(printf '%s\n' "${users_json}" | grep -Ec '"username"[[:space:]]*:')"
+    [[ "${user_count}" -eq "${EXPECTED_USER_COUNT}" ]] \
+        && pass "User count is ${EXPECTED_USER_COUNT}" \
+        || fail "User count is ${user_count}, expected ${EXPECTED_USER_COUNT}"
 
-    if [[ "${user_count}" -eq "${EXPECTED_USER_COUNT}" ]]; then
-        pass "User count is ${EXPECTED_USER_COUNT}"
-    else
-        fail "User count is ${user_count}, expected ${EXPECTED_USER_COUNT}"
-    fi
+    while IFS=$'\t' read -r username first_name last_name; do
+        expected_email="${username}@${KEYCLOAK_SEED_EMAIL_DOMAIN}"
+        actual_email="$(printf '%s\n' "${users_json}" | jq -r --arg username "${username}" '.[] | select(.username == $username) | .email // empty')"
+        actual_first="$(printf '%s\n' "${users_json}" | jq -r --arg username "${username}" '.[] | select(.username == $username) | .firstName // empty')"
+        actual_last="$(printf '%s\n' "${users_json}" | jq -r --arg username "${username}" '.[] | select(.username == $username) | .lastName // empty')"
 
-    bad_email_count="$(printf '%s\n' "${users_json}" | grep -E '"email"[[:space:]]*:' | grep -Fvc "@${KEYCLOAK_SEED_EMAIL_DOMAIN}\"" || true)"
-    if [[ "${user_count}" -eq 0 ]]; then
-        fail "Cannot verify user emails because no users were returned"
-    elif [[ "${bad_email_count}" -eq 0 ]]; then
-        pass "All listed user emails end with @${KEYCLOAK_SEED_EMAIL_DOMAIN}"
-    else
-        fail "${bad_email_count} listed user emails do not end with @${KEYCLOAK_SEED_EMAIL_DOMAIN}"
-    fi
-
-    for username in sara.shirazi anna.vanbreda amar.lagosi rhea.coimbra; do
-        if printf '%s\n' "${usernames}" | grep -Fxq "${username}"; then
-            pass "Sample user exists: ${username}"
-        else
-            fail "Sample user missing: ${username}"
+        if [[ -z "${actual_email}" ]]; then
+            fail "User missing: ${username}"
+            continue
         fi
-    done
-
-    if printf '%s\n' "${usernames}" | grep -Eq '^(student|alumni|guest)[0-9]+$'; then
-        fail "Numbered placeholder usernames are present"
-    else
-        pass "No numbered placeholder usernames found"
-    fi
+        [[ "${actual_email}" == "${expected_email}" ]] && pass "User email matches: ${username}" || fail "User email mismatch: ${username}"
+        [[ "${actual_first}" == "${first_name}" && "${actual_last}" == "${last_name}" ]] && pass "User name matches: ${username}" || fail "User name mismatch: ${username}"
+    done < <(jq -r '.users[] | [.username, .firstName, .lastName] | @tsv' "${KEYCLOAK_USERS_FILE}")
 }
 
 check_public_discovery() {
@@ -295,7 +333,9 @@ check_public_discovery() {
         return
     fi
 
-    printf '%s\n' "${discovery}" | grep -Fq "\"issuer\":\"${KEYCLOAK_ISSUER}\"" && pass "Discovery issuer matches ${KEYCLOAK_ISSUER}" || fail "Discovery issuer mismatch"
+    printf '%s\n' "${discovery}" | jq -e --arg issuer "${KEYCLOAK_ISSUER}" '.issuer == $issuer' >/dev/null 2>&1 \
+        && pass "Discovery issuer matches ${KEYCLOAK_ISSUER}" \
+        || fail "Discovery issuer mismatch"
 }
 
 summary() {
@@ -311,12 +351,14 @@ summary() {
 }
 
 main() {
-    echo -e "${BOLD}${CYAN}UnrealUni Keycloak Realm Verification${NC}"
+    echo -e "${BOLD}${CYAN}Keycloak Realm Verification${NC}"
 
     require_repo_root || true
     require_env_file || true
-    load_env
+    require_data_files
     require_commands
+    validate_data || true
+    load_env
     authenticate
     check_realm
     check_client

@@ -72,9 +72,10 @@ services:
         condition: service_healthy
     networks:
       - internal
+      - public
 
   nginx:
-    image: nginx:1.27-alpine
+    image: ${NGINX_IMAGE:-nginx:1.27-alpine}
     restart: unless-stopped
     ports:
       - "80:80"
@@ -94,7 +95,7 @@ services:
       - public
 
   certbot:
-    image: certbot/certbot:v3.1.0
+    image: ${CERTBOT_IMAGE:-certbot/certbot:v3.1.0}
     profiles: ["certbot"]
     volumes:
       - certbot_conf:/etc/letsencrypt

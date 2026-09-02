@@ -3,13 +3,10 @@
 
 set -uo pipefail
 
-APP_DIR="/opt/1upmoodleserve"
-SSH_USER="underroot"
-SSH_PORT="44422"
-VPS_IP="138.68.64.183"
-MOODLE_DOMAIN="moodle.unrealuni.xyz"
-KEYCLOAK_DOMAIN="iam.unrealuni.xyz"
-ROOT_DOMAIN="unrealuni.xyz"
+APP_DIR="${APP_DIR:-/opt/1upmoodleserve}"
+SSH_USER="${SSH_USER:-underroot}"
+SSH_PORT="${SSH_PORT:-44422}"
+ENV_FILE="${ENV_FILE:-${APP_DIR}/.env}"
 SSHD_DROP_IN="/etc/ssh/sshd_config.d/01-1upmoodleserve.conf"
 
 if [[ -t 1 ]]; then
@@ -45,6 +42,38 @@ pkg_installed() {
     dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q '^install ok installed$'
 }
 
+env_get() {
+    local key="$1"
+    local default="${2:-}"
+    local value
+
+    value="$(awk -F= -v key="${key}" '$1 == key { sub(/^[^=]*=/, ""); print; found=1 } END { if (!found) exit 1 }' "${ENV_FILE}" 2>/dev/null || true)"
+    value="${value%\"}"
+    value="${value#\"}"
+
+    if [[ -z "${value}" ]]; then
+        printf '%s\n' "${default}"
+    else
+        printf '%s\n' "${value}"
+    fi
+}
+
+load_env() {
+    if [[ -f "${ENV_FILE}" ]]; then
+        SSH_USER="$(env_get SSH_USER "${SSH_USER}")"
+        SSH_PORT="$(env_get SSH_PORT "${SSH_PORT}")"
+        VPS_IP="$(env_get VPS_IP "${VPS_IP:-}")"
+        ROOT_DOMAIN="$(env_get ROOT_DOMAIN "${ROOT_DOMAIN:-}")"
+        MOODLE_DOMAIN="$(env_get MOODLE_DOMAIN)"
+        KEYCLOAK_DOMAIN="$(env_get KEYCLOAK_DOMAIN)"
+    else
+        VPS_IP="${VPS_IP:-}"
+        ROOT_DOMAIN="${ROOT_DOMAIN:-}"
+        MOODLE_DOMAIN=""
+        KEYCLOAK_DOMAIN=""
+    fi
+}
+
 check_os() {
     section "Operating system"
 
@@ -66,6 +95,11 @@ check_os() {
 check_dns() {
     section "DNS"
 
+    if [[ -z "${VPS_IP}" ]]; then
+        warn "VPS_IP is not set; DNS target checks skipped"
+        return
+    fi
+
     if ! command -v dig >/dev/null 2>&1; then
         warn "dig not installed; DNS checks skipped"
         return
@@ -73,6 +107,7 @@ check_dns() {
 
     local domain
     for domain in "${ROOT_DOMAIN}" "${MOODLE_DOMAIN}" "${KEYCLOAK_DOMAIN}"; do
+        [[ -n "${domain}" ]] || continue
         local result
         result="$(dig @1.1.1.1 +short "${domain}" A | tail -n 1)"
         if [[ "${result}" == "${VPS_IP}" ]]; then
@@ -98,9 +133,9 @@ check_project_path() {
         warn "docker-compose.yml not found in ${APP_DIR}"
     fi
 
-    if [[ -f "${APP_DIR}/.env" ]]; then
+    if [[ -f "${ENV_FILE}" ]]; then
         pass ".env exists in ${APP_DIR}"
-        if grep -qE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=.*CHANGE_ME' "${APP_DIR}/.env"; then
+        if grep -qE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=.*CHANGE_ME' "${ENV_FILE}"; then
             fail ".env still contains CHANGE_ME placeholders"
         else
             pass ".env contains no CHANGE_ME placeholders"
@@ -236,6 +271,7 @@ main() {
     echo ""
     echo -e "${BOLD}${CYAN}1UpMoodleServe Server Verification${NC}"
 
+    load_env
     check_os
     check_dns
     check_project_path

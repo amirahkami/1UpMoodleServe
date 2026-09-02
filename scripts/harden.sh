@@ -8,8 +8,9 @@
 
 set -euo pipefail
 
-SSH_USER="underroot"
-SSH_PORT="44422"
+SSH_USER="${SSH_USER:-underroot}"
+SSH_PORT="${SSH_PORT:-44422}"
+SERVER_HOST="${SERVER_HOST:-<server-ip>}"
 SSHD_DROP_IN="/etc/ssh/sshd_config.d/01-1upmoodleserve.conf"
 NFTABLES_CONF="/etc/nftables.conf"
 FAIL2BAN_JAIL="/etc/fail2ban/jail.local"
@@ -191,7 +192,7 @@ EOF
 ssh_step2() {
     section "SSH hardening step 2"
     warn "This step disables direct root SSH and allows only ${SSH_USER} on port ${SSH_PORT}."
-    confirm_exact "Have you successfully logged in with: ssh -p ${SSH_PORT} ${SSH_USER}@138.68.64.183 ?" "yes"
+    confirm_exact "Have you successfully logged in with: ssh -p ${SSH_PORT} ${SSH_USER}@${SERVER_HOST} ?" "yes"
 
     backup_ssh_config
 

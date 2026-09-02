@@ -1,0 +1,1040 @@
+{
+  "users": [
+    {
+      "username": "anna.vanbreda",
+      "firstName": "Anna",
+      "lastName": "Vanbreda",
+      "universityRole": "staff",
+      "primaryGroup": "IT-Services",
+      "moodleRole": "admin"
+    },
+    {
+      "username": "hass.lagosi",
+      "firstName": "Hass",
+      "lastName": "Lagosi",
+      "universityRole": "staff",
+      "primaryGroup": "IT-Services",
+      "moodleRole": "admin"
+    },
+    {
+      "username": "priy.delhiwala",
+      "firstName": "Priy",
+      "lastName": "Delhiwala",
+      "universityRole": "staff",
+      "primaryGroup": "IT-Services",
+      "moodleRole": "admin"
+    },
+    {
+      "username": "dave.vonmainz",
+      "firstName": "Dave",
+      "lastName": "Vonmainz",
+      "universityRole": "staff",
+      "primaryGroup": "IT-Services",
+      "moodleRole": "admin"
+    },
+    {
+      "username": "simo.torinese",
+      "firstName": "Simo",
+      "lastName": "Torinese",
+      "universityRole": "staff",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "manager"
+    },
+    {
+      "username": "sara.kermani",
+      "firstName": "Sara",
+      "lastName": "Kermani",
+      "universityRole": "staff",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "manager"
+    },
+    {
+      "username": "cleo.parisien",
+      "firstName": "Cleo",
+      "lastName": "Parisien",
+      "universityRole": "staff",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "manager"
+    },
+    {
+      "username": "rami.lisboeta",
+      "firstName": "Rami",
+      "lastName": "Lisboeta",
+      "universityRole": "staff",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "course_creator"
+    },
+    {
+      "username": "mark.oxford",
+      "firstName": "Mark",
+      "lastName": "Oxford",
+      "universityRole": "staff",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "course_creator"
+    },
+    {
+      "username": "fati.granadino",
+      "firstName": "Fati",
+      "lastName": "Granadino",
+      "universityRole": "staff",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "course_creator"
+    },
+    {
+      "username": "yuki.kobe",
+      "firstName": "Yuki",
+      "lastName": "Kobe",
+      "universityRole": "staff",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "teacher"
+    },
+    {
+      "username": "omar.valenciano",
+      "firstName": "Omar",
+      "lastName": "Valenciano",
+      "universityRole": "staff",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "teacher"
+    },
+    {
+      "username": "miri.vonbonn",
+      "firstName": "Miri",
+      "lastName": "Vonbonn",
+      "universityRole": "staff",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "teacher"
+    },
+    {
+      "username": "lina.vandelft",
+      "firstName": "Lina",
+      "lastName": "Vandelft",
+      "universityRole": "staff",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "teacher"
+    },
+    {
+      "username": "alex.berliner",
+      "firstName": "Alex",
+      "lastName": "Berliner",
+      "universityRole": "staff",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "teacher"
+    },
+    {
+      "username": "nadi.marseillais",
+      "firstName": "Nadi",
+      "lastName": "Marseillais",
+      "universityRole": "staff",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "teacher"
+    },
+    {
+      "username": "dani.york",
+      "firstName": "Dani",
+      "lastName": "York",
+      "universityRole": "staff",
+      "primaryGroup": "IT-Services"
+    },
+    {
+      "username": "mei.nara",
+      "firstName": "Mei",
+      "lastName": "Nara",
+      "universityRole": "staff",
+      "primaryGroup": "Finance"
+    },
+    {
+      "username": "reza.kashani",
+      "firstName": "Reza",
+      "lastName": "Kashani",
+      "universityRole": "staff",
+      "primaryGroup": "IT-Services"
+    },
+    {
+      "username": "rita.sevillano",
+      "firstName": "Rita",
+      "lastName": "Sevillano",
+      "universityRole": "staff",
+      "primaryGroup": "Finance"
+    },
+    {
+      "username": "sara.shirazi",
+      "firstName": "Sara",
+      "lastName": "Shirazi",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "omar.vandelft",
+      "firstName": "Omar",
+      "lastName": "Vandelft",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "ravi.delhiwala",
+      "firstName": "Ravi",
+      "lastName": "Delhiwala",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "yuki.osaka",
+      "firstName": "Yuki",
+      "lastName": "Osaka",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "lea.vonessen",
+      "firstName": "Lea",
+      "lastName": "Vonessen",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "tom.york",
+      "firstName": "Tom",
+      "lastName": "York",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "mina.milanese",
+      "firstName": "Mina",
+      "lastName": "Milanese",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "zara.lyonnais",
+      "firstName": "Zara",
+      "lastName": "Lyonnais",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "nima.tehrani",
+      "firstName": "Nima",
+      "lastName": "Tehrani",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "hana.kyoto",
+      "firstName": "Hana",
+      "lastName": "Kyoto",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "aria.valenciano",
+      "firstName": "Aria",
+      "lastName": "Valenciano",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "kai.tokyo",
+      "firstName": "Kai",
+      "lastName": "Tokyo",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "lina.vanbreda",
+      "firstName": "Lina",
+      "lastName": "Vanbreda",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "amir.lahori",
+      "firstName": "Amir",
+      "lastName": "Lahori",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "nora.bath",
+      "firstName": "Nora",
+      "lastName": "Bath",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "maya.vanleiden",
+      "firstName": "Maya",
+      "lastName": "Vanleiden",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "noor.kermani",
+      "firstName": "Noor",
+      "lastName": "Kermani",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "luca.romano",
+      "firstName": "Luca",
+      "lastName": "Romano",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "sana.hyderabadi",
+      "firstName": "Sana",
+      "lastName": "Hyderabadi",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "ivan.vanburen",
+      "firstName": "Ivan",
+      "lastName": "Vanburen",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "rosa.sevillano",
+      "firstName": "Rosa",
+      "lastName": "Sevillano",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "ali.ankarali",
+      "firstName": "Ali",
+      "lastName": "Ankarali",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "mei.kobe",
+      "firstName": "Mei",
+      "lastName": "Kobe",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "emma.london",
+      "firstName": "Emma",
+      "lastName": "London",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "reza.yazdi",
+      "firstName": "Reza",
+      "lastName": "Yazdi",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "mila.vonkoln",
+      "firstName": "Mila",
+      "lastName": "Vonkoln",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "pavi.madurai",
+      "firstName": "Pavi",
+      "lastName": "Madurai",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "luc.parisien",
+      "firstName": "Luc",
+      "lastName": "Parisien",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "dara.tabrizi",
+      "firstName": "Dara",
+      "lastName": "Tabrizi",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "yara.izmirli",
+      "firstName": "Yara",
+      "lastName": "Izmirli",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "hugo.vontrier",
+      "firstName": "Hugo",
+      "lastName": "Vontrier",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "ines.lisboeta",
+      "firstName": "Ines",
+      "lastName": "Lisboeta",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "sami.lagosi",
+      "firstName": "Sami",
+      "lastName": "Lagosi",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "ruby.kent",
+      "firstName": "Ruby",
+      "lastName": "Kent",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "tara.genovese",
+      "firstName": "Tara",
+      "lastName": "Genovese",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "adam.prager",
+      "firstName": "Adam",
+      "lastName": "Prager",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "lila.kashani",
+      "firstName": "Lila",
+      "lastName": "Kashani",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "pino.napolitano",
+      "firstName": "Pino",
+      "lastName": "Napolitano",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "timo.vankampen",
+      "firstName": "Timo",
+      "lastName": "Vankampen",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "eda.istanbullu",
+      "firstName": "Eda",
+      "lastName": "Istanbullu",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "rami.torinese",
+      "firstName": "Rami",
+      "lastName": "Torinese",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "eva.toledano",
+      "firstName": "Eva",
+      "lastName": "Toledano",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "yuna.nara",
+      "firstName": "Yuna",
+      "lastName": "Nara",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "alma.granadino",
+      "firstName": "Alma",
+      "lastName": "Granadino",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "zain.coimbra",
+      "firstName": "Zain",
+      "lastName": "Coimbra",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "nina.nicois",
+      "firstName": "Nina",
+      "lastName": "Nicois",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "olga.vonbonn",
+      "firstName": "Olga",
+      "lastName": "Vonbonn",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "mona.alexandri",
+      "firstName": "Mona",
+      "lastName": "Alexandri",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "jona.dubliner",
+      "firstName": "Jona",
+      "lastName": "Dubliner",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "fari.isfahani",
+      "firstName": "Fari",
+      "lastName": "Isfahani",
+      "universityRole": "student",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "amar.lagosi",
+      "firstName": "Amar",
+      "lastName": "Lagosi",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "tara.shirazi",
+      "firstName": "Tara",
+      "lastName": "Shirazi",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "kian.dubliner",
+      "firstName": "Kian",
+      "lastName": "Dubliner",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "jin.osaka",
+      "firstName": "Jin",
+      "lastName": "Osaka",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "mara.granadino",
+      "firstName": "Mara",
+      "lastName": "Granadino",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "ali.tehrani",
+      "firstName": "Ali",
+      "lastName": "Tehrani",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "lynn.london",
+      "firstName": "Lynn",
+      "lastName": "London",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "sana.lahori",
+      "firstName": "Sana",
+      "lastName": "Lahori",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "idri.vankampen",
+      "firstName": "Idri",
+      "lastName": "Vankampen",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "lila.vonessen",
+      "firstName": "Lila",
+      "lastName": "Vonessen",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "eva.napolitano",
+      "firstName": "Eva",
+      "lastName": "Napolitano",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "nadi.tabrizi",
+      "firstName": "Nadi",
+      "lastName": "Tabrizi",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "andi.coimbra",
+      "firstName": "Andi",
+      "lastName": "Coimbra",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "aya.kyoto",
+      "firstName": "Aya",
+      "lastName": "Kyoto",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "amin.lagosi",
+      "firstName": "Amin",
+      "lastName": "Lagosi",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "niko.vontrier",
+      "firstName": "Niko",
+      "lastName": "Vontrier",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "seli.ankarali",
+      "firstName": "Seli",
+      "lastName": "Ankarali",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "mate.valenciano",
+      "firstName": "Mate",
+      "lastName": "Valenciano",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "ivy.canton",
+      "firstName": "Ivy",
+      "lastName": "Canton",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "ola.kashani",
+      "firstName": "Ola",
+      "lastName": "Kashani",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "rani.vanleiden",
+      "firstName": "Rani",
+      "lastName": "Vanleiden",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "marc.romano",
+      "firstName": "Marc",
+      "lastName": "Romano",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "brun.lisboeta",
+      "firstName": "Brun",
+      "lastName": "Lisboeta",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "nour.kermani",
+      "firstName": "Nour",
+      "lastName": "Kermani",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "erik.vankampen",
+      "firstName": "Erik",
+      "lastName": "Vankampen",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "dali.vandelft",
+      "firstName": "Dali",
+      "lastName": "Vandelft",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "theo.parisien",
+      "firstName": "Theo",
+      "lastName": "Parisien",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "nia.bath",
+      "firstName": "Nia",
+      "lastName": "Bath",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "muna.alexandri",
+      "firstName": "Muna",
+      "lastName": "Alexandri",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "kira.vanburen",
+      "firstName": "Kira",
+      "lastName": "Vanburen",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "jan.prager",
+      "firstName": "Jan",
+      "lastName": "Prager",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "yusu.istanbullu",
+      "firstName": "Yusu",
+      "lastName": "Istanbullu",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "reem.bergen",
+      "firstName": "Reem",
+      "lastName": "Bergen",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "liam.kent",
+      "firstName": "Liam",
+      "lastName": "Kent",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "anik.kermani",
+      "firstName": "Anik",
+      "lastName": "Kermani",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "toma.vonulm",
+      "firstName": "Toma",
+      "lastName": "Vonulm",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "ines.nicois",
+      "firstName": "Ines",
+      "lastName": "Nicois",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "jami.vonkoln",
+      "firstName": "Jami",
+      "lastName": "Vonkoln",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "raya.lyonnais",
+      "firstName": "Raya",
+      "lastName": "Lyonnais",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "lina.vanleiden",
+      "firstName": "Lina",
+      "lastName": "Vanleiden",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "nola.camden",
+      "firstName": "Nola",
+      "lastName": "Camden",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "ema.milanese",
+      "firstName": "Ema",
+      "lastName": "Milanese",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "maks.berliner",
+      "firstName": "Maks",
+      "lastName": "Berliner",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "alan.toledano",
+      "firstName": "Alan",
+      "lastName": "Toledano",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "zara.torinese",
+      "firstName": "Zara",
+      "lastName": "Torinese",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "paru.madurai",
+      "firstName": "Paru",
+      "lastName": "Madurai",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "mila.vonmainz",
+      "firstName": "Mila",
+      "lastName": "Vonmainz",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "rafi.delhiwala",
+      "firstName": "Rafi",
+      "lastName": "Delhiwala",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Engineering",
+      "moodleRole": "student"
+    },
+    {
+      "username": "hana.tokyo",
+      "firstName": "Hana",
+      "lastName": "Tokyo",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Medicine",
+      "moodleRole": "student"
+    },
+    {
+      "username": "sara.hyderabadi",
+      "firstName": "Sara",
+      "lastName": "Hyderabadi",
+      "universityRole": "alumni",
+      "primaryGroup": "Faculty of Humanities",
+      "moodleRole": "student"
+    },
+    {
+      "username": "rhea.coimbra",
+      "firstName": "Rhea",
+      "lastName": "Coimbra",
+      "universityRole": "guest",
+      "primaryGroup": null,
+      "moodleRole": "guest"
+    },
+    {
+      "username": "alan.york",
+      "firstName": "Alan",
+      "lastName": "York",
+      "universityRole": "guest",
+      "primaryGroup": null,
+      "moodleRole": "guest"
+    },
+    {
+      "username": "mia.parisien",
+      "firstName": "Mia",
+      "lastName": "Parisien",
+      "universityRole": "guest",
+      "primaryGroup": null,
+      "moodleRole": "guest"
+    },
+    {
+      "username": "ilan.vandelft",
+      "firstName": "Ilan",
+      "lastName": "Vandelft",
+      "universityRole": "guest",
+      "primaryGroup": null,
+      "moodleRole": "guest"
+    },
+    {
+      "username": "sia.toledo",
+      "firstName": "Sia",
+      "lastName": "Toledo",
+      "universityRole": "guest",
+      "primaryGroup": null,
+      "moodleRole": "guest"
+    },
+    {
+      "username": "tim.kent",
+      "firstName": "Tim",
+      "lastName": "Kent",
+      "universityRole": "guest",
+      "primaryGroup": null,
+      "moodleRole": "guest"
+    },
+    {
+      "username": "una.bath",
+      "firstName": "Una",
+      "lastName": "Bath",
+      "universityRole": "guest",
+      "primaryGroup": null,
+      "moodleRole": "guest"
+    },
+    {
+      "username": "max.bergen",
+      "firstName": "Max",
+      "lastName": "Bergen",
+      "universityRole": "guest",
+      "primaryGroup": null,
+      "moodleRole": "guest"
+    },
+    {
+      "username": "lia.nara",
+      "firstName": "Lia",
+      "lastName": "Nara",
+      "universityRole": "guest",
+      "primaryGroup": null,
+      "moodleRole": "guest"
+    },
+    {
+      "username": "ian.kobe",
+      "firstName": "Ian",
+      "lastName": "Kobe",
+      "universityRole": "guest",
+      "primaryGroup": null,
+      "moodleRole": "guest"
+    }
+  ]
+}

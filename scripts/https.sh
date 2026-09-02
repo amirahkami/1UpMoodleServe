@@ -3,10 +3,10 @@
 
 set -euo pipefail
 
-ENV_FILE=".env"
+ENV_FILE="${ENV_FILE:-.env}"
 DEFAULT_CERT_NAME="1upmoodleserve"
-HTTP_CONF_DIR="./docker/nginx/http.d"
-HTTPS_CONF_DIR="./docker/nginx/https.d"
+GENERATED_HTTP_CONF_DIR="./.generated/nginx/http.d"
+GENERATED_HTTPS_CONF_DIR="./.generated/nginx/https.d"
 
 if [[ -t 1 ]]; then
     RED='\033[0;31m'
@@ -48,8 +48,8 @@ EOF
 
 require_repo_root() {
     [[ -f docker-compose.yml ]] || die "Run this script from the project root."
-    [[ -d docker/nginx/http.d ]] || die "Missing docker/nginx/http.d."
-    [[ -d docker/nginx/https.d ]] || die "Missing docker/nginx/https.d."
+    [[ -d docker/nginx/templates/http.d ]] || die "Missing docker/nginx/templates/http.d."
+    [[ -d docker/nginx/templates/https.d ]] || die "Missing docker/nginx/templates/https.d."
 }
 
 require_env_file() {
@@ -114,13 +114,13 @@ load_required_env() {
     [[ -n "${MOODLE_DOMAIN}" ]] || die "MOODLE_DOMAIN is missing in ${ENV_FILE}."
     [[ -n "${KEYCLOAK_DOMAIN}" ]] || die "KEYCLOAK_DOMAIN is missing in ${ENV_FILE}."
     [[ -n "${LETSENCRYPT_EMAIL}" ]] || die "LETSENCRYPT_EMAIL is missing in ${ENV_FILE}."
-    [[ "${LETSENCRYPT_CERT_NAME}" == "${DEFAULT_CERT_NAME}" ]] || die "LETSENCRYPT_CERT_NAME must be ${DEFAULT_CERT_NAME}; Nginx configs reference this certificate path."
 }
 
 enable_http_mode_for_challenge() {
     section "Prepare HTTP challenge mode"
 
-    env_set NGINX_CONF_DIR "${HTTP_CONF_DIR}"
+    bash scripts/nginx-config.sh generate http
+    env_set NGINX_CONF_DIR "${GENERATED_HTTP_CONF_DIR}"
     compose config >/dev/null
     compose up -d nginx
 
@@ -150,7 +150,8 @@ enable_https_mode() {
     section "Enable HTTPS mode"
 
     env_set LETSENCRYPT_CERT_NAME "${LETSENCRYPT_CERT_NAME}"
-    env_set NGINX_CONF_DIR "${HTTPS_CONF_DIR}"
+    bash scripts/nginx-config.sh generate https
+    env_set NGINX_CONF_DIR "${GENERATED_HTTPS_CONF_DIR}"
     env_set MOODLE_WWWROOT "https://${MOODLE_DOMAIN}"
 
     compose config >/dev/null
