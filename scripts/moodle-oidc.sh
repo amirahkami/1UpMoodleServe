@@ -76,7 +76,7 @@ env_get() {
 json_get() {
     local file="$1"
     local expression="$2"
-    jq -er "${expression}" "${file}"
+    jq -r "${expression}" "${file}"
 }
 
 bool_to_int() {

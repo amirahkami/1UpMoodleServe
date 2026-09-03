@@ -7,6 +7,8 @@
 - Moodle OAuth2 desired state moved to `data/moodle-oidc.json`.
 - Keycloak apply and verify scripts read the same JSON data.
 - Seeded user passwords are deterministic and non-temporary by default.
+- Normal Keycloak apply skips user reapply when live usernames already match JSON; use `KEYCLOAK_FORCE_RESEED=1` to repair users or reset passwords.
+- User repair/reseed runs as one Keycloak-container batch so fresh imports and forced password resets do not pay one Docker exec per user field.
 
 ## Current Password Rule
 

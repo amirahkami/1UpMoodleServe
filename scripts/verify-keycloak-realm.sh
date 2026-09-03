@@ -55,7 +55,7 @@ env_get() {
 json_get() {
     local file="$1"
     local expression="$2"
-    jq -er "${expression}" "${file}"
+    jq -r "${expression}" "${file}"
 }
 
 require_repo_root() {
@@ -221,14 +221,16 @@ check_client() {
 check_realm_roles() {
     section "Realm roles"
 
-    local role
-    while IFS= read -r role; do
+    local roles role
+    mapfile -t roles < <(jq -r '.realmRoles[]' "${KEYCLOAK_REALM_FILE}")
+
+    for role in "${roles[@]}"; do
         if kc get "roles/${role}" -r "${KEYCLOAK_REALM}" >/dev/null 2>&1; then
             pass "Realm role exists: ${role}"
         else
             fail "Realm role missing: ${role}"
         fi
-    done < <(jq -r '.realmRoles[]' "${KEYCLOAK_REALM_FILE}")
+    done
 }
 
 check_client_roles() {
@@ -239,14 +241,16 @@ check_client_roles() {
         return
     fi
 
-    local role
-    while IFS= read -r role; do
+    local roles role
+    mapfile -t roles < <(jq -r '.clientRoles[]' "${KEYCLOAK_REALM_FILE}")
+
+    for role in "${roles[@]}"; do
         if kc get "clients/${MOODLE_CLIENT_UUID}/roles/${role}" -r "${KEYCLOAK_REALM}" >/dev/null 2>&1; then
             pass "Moodle client role exists: ${role}"
         else
             fail "Moodle client role missing: ${role}"
         fi
-    done < <(jq -r '.clientRoles[]' "${KEYCLOAK_REALM_FILE}")
+    done
 }
 
 check_groups() {
