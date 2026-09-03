@@ -28,6 +28,10 @@ ok() { echo -e "${GREEN}[OK]${NC}    $*"; }
 warn() { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 fail() { echo -e "${RED}[FAIL]${NC}  $*"; }
 die() { fail "$*"; exit 1; }
+trace_seed() {
+    [[ "${KEYCLOAK_RESEED_TRACE:-0}" == "1" ]] || return 0
+    info "$*"
+}
 
 section() {
     echo ""
@@ -66,6 +70,7 @@ require_data_files() {
 
 require_commands() {
     command -v jq >/dev/null 2>&1 || die "jq command not found. Run scripts/provision.sh first."
+    command -v curl >/dev/null 2>&1 || die "curl command not found. Run scripts/provision.sh first."
     command -v docker >/dev/null 2>&1 || die "docker command not found."
     docker compose version >/dev/null 2>&1 || die "docker compose plugin not found."
     docker info >/dev/null 2>&1 || die "Current user cannot access Docker."
@@ -145,6 +150,7 @@ load_env() {
 
     MOODLE_BASE_URL="https://${MOODLE_DOMAIN}"
     MOODLE_REDIRECT_URI="${MOODLE_BASE_URL}${MOODLE_OAUTH2_CALLBACK_PATH}"
+    KEYCLOAK_BASE_URL="https://${KEYCLOAK_DOMAIN}"
 }
 
 kc() {
@@ -172,6 +178,50 @@ authenticate() {
         --password "${KEYCLOAK_ADMIN_PASSWORD}" >/dev/null
 
     ok "Authenticated with the Keycloak admin CLI."
+}
+
+urlencode() {
+    jq -rn --arg value "$1" '$value | @uri'
+}
+
+authenticate_rest() {
+    KC_ADMIN_TOKEN="$(
+        curl -fsS \
+            -X POST "${KEYCLOAK_BASE_URL}/realms/master/protocol/openid-connect/token" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "grant_type=password" \
+            --data-urlencode "client_id=admin-cli" \
+            --data-urlencode "username=${KEYCLOAK_ADMIN}" \
+            --data-urlencode "password=${KEYCLOAK_ADMIN_PASSWORD}" \
+            | jq -r '.access_token // empty'
+    )"
+
+    [[ -n "${KC_ADMIN_TOKEN}" ]] || die "Could not get Keycloak admin REST token."
+}
+
+kc_api() {
+    local method="$1"
+    local path="$2"
+    local payload="${3:-}"
+    local args=(-fsS -X "${method}" "${KEYCLOAK_BASE_URL}${path}" -H "Authorization: Bearer ${KC_ADMIN_TOKEN}")
+
+    if [[ -n "${payload}" ]]; then
+        args+=(-H "Content-Type: application/json" --data "${payload}")
+    fi
+
+    curl "${args[@]}"
+}
+
+kc_api_empty() {
+    local method="$1"
+    local path="$2"
+
+    curl -fsS \
+        -X "${method}" \
+        "${KEYCLOAK_BASE_URL}${path}" \
+        -H "Authorization: Bearer ${KC_ADMIN_TOKEN}" \
+        -H "Content-Type: application/json" \
+        --data ''
 }
 
 realm_exists() {
@@ -355,13 +405,6 @@ ensure_roles_and_groups() {
     ok "Realm roles, Moodle roles, and groups ensured."
 }
 
-user_id() {
-    local username="$1"
-    kc get users -r "${KEYCLOAK_REALM}" -q exact=true -q "username=${username}" --fields id,username 2>/dev/null \
-        | jq -r --arg username "${username}" '.[] | select(.username == $username) | .id' \
-        | head -n 1
-}
-
 render_seed_password() {
     local username="$1"
     local first_name="$2"
@@ -379,214 +422,185 @@ render_seed_password() {
     printf '%s\n' "${password}"
 }
 
-set_seed_password() {
+rest_user_id() {
+    local username="$1"
+    local encoded_username
+
+    encoded_username="$(urlencode "${username}")"
+    kc_api GET "/admin/realms/${KEYCLOAK_REALM}/users?exact=true&username=${encoded_username}" \
+        | jq -r --arg username "${username}" 'map(select(.username == $username))[0].id // empty'
+}
+
+rest_client_uuid() {
+    local encoded_client_id
+
+    encoded_client_id="$(urlencode "${KEYCLOAK_MOODLE_CLIENT_ID}")"
+    kc_api GET "/admin/realms/${KEYCLOAK_REALM}/clients?clientId=${encoded_client_id}" \
+        | jq -r --arg clientid "${KEYCLOAK_MOODLE_CLIENT_ID}" 'map(select(.clientId == $clientid))[0].id // empty'
+}
+
+rest_group_id() {
+    local group="$1"
+    local encoded_group
+
+    encoded_group="$(urlencode "${group}")"
+    kc_api GET "/admin/realms/${KEYCLOAK_REALM}/groups?search=${encoded_group}&max=100" \
+        | jq -r --arg group "${group}" 'map(select(.name == $group))[0].id // empty'
+}
+
+rest_role_payload() {
+    local role="$1"
+    local encoded_role
+
+    encoded_role="$(urlencode "${role}")"
+    kc_api GET "/admin/realms/${KEYCLOAK_REALM}/roles/${encoded_role}"
+}
+
+rest_client_role_payload() {
+    local role="$1"
+    local encoded_role
+
+    encoded_role="$(urlencode "${role}")"
+    kc_api GET "/admin/realms/${KEYCLOAK_REALM}/clients/${REST_MOODLE_CLIENT_UUID}/roles/${encoded_role}"
+}
+
+rest_user_payload() {
     local username="$1"
     local first_name="$2"
     local last_name="$3"
-    local password
-    local args=()
+    local university_role="$4"
+    local primary_group="$5"
+    local email="${username}@${KEYCLOAK_SEED_EMAIL_DOMAIN}"
 
-    password="$(render_seed_password "${username}" "${first_name}" "${last_name}")"
-    if [[ "${KEYCLOAK_SEED_PASSWORD_TEMPORARY}" == "true" ]]; then
-        args+=(--temporary)
-    fi
-
-    kc set-password -r "${KEYCLOAK_REALM}" --username "${username}" --new-password "${password}" "${args[@]}" >/dev/null
+    jq -n \
+        --arg username "${username}" \
+        --arg first_name "${first_name}" \
+        --arg last_name "${last_name}" \
+        --arg email "${email}" \
+        --arg university_role "${university_role}" \
+        --arg primary_group "${primary_group}" \
+        '{
+            username: $username,
+            enabled: true,
+            emailVerified: true,
+            firstName: $first_name,
+            lastName: $last_name,
+            email: $email,
+            attributes: {
+                university_role: [$university_role]
+            }
+        }
+        | if $primary_group != "" then
+            . + {
+                groups: ["/" + $primary_group],
+                attributes: (.attributes + {primary_group: [$primary_group]})
+            }
+          else .
+          end'
 }
 
-assign_group() {
+rest_reset_password_payload() {
+    local password="$1"
+
+    jq -n \
+        --arg password "${password}" \
+        --argjson temporary "${KEYCLOAK_SEED_PASSWORD_TEMPORARY}" \
+        '{type: "password", value: $password, temporary: $temporary}'
+}
+
+rest_assign_role() {
+    local userid="$1"
+    local role="$2"
+    local role_payload
+
+    role_payload="$(rest_role_payload "${role}")"
+    kc_api POST "/admin/realms/${KEYCLOAK_REALM}/users/${userid}/role-mappings/realm" "[$role_payload]" >/dev/null || true
+}
+
+rest_assign_client_role() {
+    local userid="$1"
+    local role="$2"
+    local role_payload
+
+    [[ -n "${role}" ]] || return 0
+    role_payload="$(rest_client_role_payload "${role}")"
+    kc_api POST "/admin/realms/${KEYCLOAK_REALM}/users/${userid}/role-mappings/clients/${REST_MOODLE_CLIENT_UUID}" "[$role_payload]" >/dev/null || true
+}
+
+rest_assign_group() {
     local userid="$1"
     local group="$2"
     local groupid
 
-    [[ -n "${group}" ]] || return
-    groupid="$(group_id "${group}")"
+    [[ -n "${group}" ]] || return 0
+    groupid="$(rest_group_id "${group}")"
     [[ -n "${groupid}" ]] || die "Group missing while assigning user: ${group}"
-    kc update "users/${userid}/groups/${groupid}" -r "${KEYCLOAK_REALM}" -s realm="${KEYCLOAK_REALM}" -s userId="${userid}" -s groupId="${groupid}" -n >/dev/null 2>&1 || true
+    kc_api_empty PUT "/admin/realms/${KEYCLOAK_REALM}/users/${userid}/groups/${groupid}" >/dev/null
 }
 
-ensure_user() {
+rest_ensure_user() {
     local username="$1"
     local first_name="$2"
     local last_name="$3"
     local university_role="$4"
     local primary_group="$5"
     local moodle_role="${6:-}"
-    local email="${username}@${KEYCLOAK_SEED_EMAIL_DOMAIN}"
-    local userid
-    local create_args
+    local userid payload password
 
-    userid="$(user_id "${username}")"
+    trace_seed "Resolving user: ${username}"
+    userid="$(rest_user_id "${username}")"
+    trace_seed "Rendering user payload: ${username}"
+    payload="$(rest_user_payload "${username}" "${first_name}" "${last_name}" "${university_role}" "${primary_group}")"
+
     if [[ -z "${userid}" ]]; then
-        create_args=(
-            -s username="${username}" \
-            -s enabled=true \
-            -s emailVerified=true \
-            -s firstName="${first_name}" \
-            -s lastName="${last_name}" \
-            -s email="${email}" \
-            -s "attributes.university_role=${university_role}"
-        )
-        if [[ -n "${primary_group}" ]]; then
-            create_args+=(
-                -s "groups=[\"/${primary_group}\"]"
-                -s "attributes.primary_group=${primary_group}"
-            )
-        fi
-        kc create users -r "${KEYCLOAK_REALM}" "${create_args[@]}" >/dev/null
-        userid="$(user_id "${username}")"
+        trace_seed "Creating user: ${username}"
+        kc_api POST "/admin/realms/${KEYCLOAK_REALM}/users" "${payload}" >/dev/null
+        userid="$(rest_user_id "${username}")"
     else
-        kc update "users/${userid}" -r "${KEYCLOAK_REALM}" \
-            -s enabled=true \
-            -s emailVerified=true \
-            -s firstName="${first_name}" \
-            -s lastName="${last_name}" \
-            -s email="${email}" \
-            -s "attributes.university_role=${university_role}" \
-            -s "attributes.primary_group=${primary_group}" >/dev/null
+        trace_seed "Updating user: ${username}"
+        kc_api PUT "/admin/realms/${KEYCLOAK_REALM}/users/${userid}" "${payload}" >/dev/null
     fi
 
     [[ -n "${userid}" ]] || die "Could not resolve user ID for ${username}."
-    assign_group "${userid}" "${primary_group}"
-    set_seed_password "${username}" "${first_name}" "${last_name}"
 
-    kc add-roles -r "${KEYCLOAK_REALM}" --uusername "${username}" --rolename "${university_role}" >/dev/null 2>&1 || true
+    trace_seed "Assigning group: ${username}"
+    rest_assign_group "${userid}" "${primary_group}"
 
-    if [[ -n "${moodle_role}" ]]; then
-        kc add-roles -r "${KEYCLOAK_REALM}" --uusername "${username}" --cclientid "${KEYCLOAK_MOODLE_CLIENT_ID}" --rolename "${moodle_role}" >/dev/null 2>&1 || true
-    fi
+    trace_seed "Resetting password: ${username}"
+    password="$(render_seed_password "${username}" "${first_name}" "${last_name}")"
+    kc_api PUT "/admin/realms/${KEYCLOAK_REALM}/users/${userid}/reset-password" "$(rest_reset_password_payload "${password}")" >/dev/null
+
+    trace_seed "Assigning realm role: ${username}"
+    rest_assign_role "${userid}" "${university_role}"
+    trace_seed "Assigning Moodle role: ${username}"
+    rest_assign_client_role "${userid}" "${moodle_role}"
 }
 
-seed_users_batch() {
-    local tmp status
-    local row username first_name last_name university_role primary_group moodle_role password
+seed_users_rest() {
+    local rows row username first_name last_name university_role primary_group moodle_role count
 
-    tmp="$(mktemp)"
-    {
-        cat <<'CONTAINER_SCRIPT'
-set -euo pipefail
+    info "Authenticating to Keycloak Admin REST..."
+    authenticate_rest
+    info "Resolving Moodle client for role mapping..."
+    REST_MOODLE_CLIENT_UUID="$(rest_client_uuid)"
+    [[ -n "${REST_MOODLE_CLIENT_UUID}" ]] || die "Could not resolve Keycloak client UUID for ${KEYCLOAK_MOODLE_CLIENT_ID}."
 
-kc() {
-    /opt/keycloak/bin/kcadm.sh "$@"
-}
+    info "Preparing seed user rows..."
+    mapfile -t rows < <(jq -r '.users[] | [.username, .firstName, .lastName, .universityRole, (.primaryGroup // ""), (.moodleRole // "")] | join("\u001f")' "${KEYCLOAK_USERS_FILE}")
 
-first_csv_id() {
-    local line id
-    line="$(kc "$@" --format csv | head -n 1 || true)"
-    id="${line%%,*}"
-    id="${id%\"}"
-    id="${id#\"}"
-    printf '%s\n' "${id}"
-}
-
-user_id() {
-    first_csv_id get users -r "${KEYCLOAK_REALM}" -q exact=true -q "username=$1" --fields id,username
-}
-
-group_id() {
-    first_csv_id get groups -r "${KEYCLOAK_REALM}" -q "search=$1" --fields id,name
-}
-
-client_uuid() {
-    first_csv_id get clients -r "${KEYCLOAK_REALM}" -q "clientId=${KEYCLOAK_MOODLE_CLIENT_ID}" --fields id,clientId
-}
-
-client_id="$(client_uuid)"
-[[ -n "${client_id}" ]] || { echo "Missing client: ${KEYCLOAK_MOODLE_CLIENT_ID}" >&2; exit 1; }
-
-count=0
-while IFS=$'\t' read -r username first_name last_name university_role primary_group moodle_role password; do
-    [[ -n "${username}" ]] || continue
-
-    email="${username}@${KEYCLOAK_SEED_EMAIL_DOMAIN}"
-    userid="$(user_id "${username}")"
-
-    if [[ -z "${userid}" ]]; then
-        create_args=(
-            -s username="${username}"
-            -s enabled=true
-            -s emailVerified=true
-            -s firstName="${first_name}"
-            -s lastName="${last_name}"
-            -s email="${email}"
-            -s "attributes.university_role=${university_role}"
-        )
-        if [[ -n "${primary_group}" ]]; then
-            create_args+=(
-                -s "groups=[\"/${primary_group}\"]"
-                -s "attributes.primary_group=${primary_group}"
-            )
+    count=0
+    for row in "${rows[@]}"; do
+        if (( count > 0 && count % 20 == 0 )); then
+            trace_seed "Refreshing Keycloak Admin REST token..."
+            authenticate_rest
         fi
-        kc create users -r "${KEYCLOAK_REALM}" "${create_args[@]}" >/dev/null
-        userid="$(user_id "${username}")"
-    else
-        kc update "users/${userid}" -r "${KEYCLOAK_REALM}" \
-            -s enabled=true \
-            -s emailVerified=true \
-            -s firstName="${first_name}" \
-            -s lastName="${last_name}" \
-            -s email="${email}" \
-            -s "attributes.university_role=${university_role}" \
-            -s "attributes.primary_group=${primary_group}" >/dev/null
-    fi
-
-    [[ -n "${userid}" ]] || { echo "Could not resolve user ID for ${username}" >&2; exit 1; }
-
-    if [[ -n "${primary_group}" ]]; then
-        gid="$(group_id "${primary_group}")"
-        [[ -n "${gid}" ]] || { echo "Missing group: ${primary_group}" >&2; exit 1; }
-        kc update "users/${userid}/groups/${gid}" -r "${KEYCLOAK_REALM}" -s realm="${KEYCLOAK_REALM}" -s userId="${userid}" -s groupId="${gid}" -n >/dev/null 2>&1 || true
-    fi
-
-    password_args=()
-    if [[ "${KEYCLOAK_SEED_PASSWORD_TEMPORARY}" == "true" ]]; then
-        password_args+=(--temporary)
-    fi
-    kc set-password -r "${KEYCLOAK_REALM}" --username "${username}" --new-password "${password}" "${password_args[@]}" >/dev/null
-
-    kc add-roles -r "${KEYCLOAK_REALM}" --uusername "${username}" --rolename "${university_role}" >/dev/null 2>&1 || true
-    if [[ -n "${moodle_role}" ]]; then
-        kc add-roles -r "${KEYCLOAK_REALM}" --uusername "${username}" --cclientid "${KEYCLOAK_MOODLE_CLIENT_ID}" --rolename "${moodle_role}" >/dev/null 2>&1 || true
-    fi
-
-    count=$((count + 1))
-    if (( count % 25 == 0 )); then
-        echo "Seeded ${count} users..."
-    fi
-done <<'USERS_TSV'
-CONTAINER_SCRIPT
-
-        while IFS=$'\t' read -r username first_name last_name university_role primary_group moodle_role; do
-            password="$(render_seed_password "${username}" "${first_name}" "${last_name}")"
-            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-                "${username}" \
-                "${first_name}" \
-                "${last_name}" \
-                "${university_role}" \
-                "${primary_group}" \
-                "${moodle_role}" \
-                "${password}"
-        done < <(jq -r '.users[] | [.username, .firstName, .lastName, .universityRole, (.primaryGroup // ""), (.moodleRole // "")] | @tsv' "${KEYCLOAK_USERS_FILE}")
-
-        cat <<'CONTAINER_SCRIPT'
-USERS_TSV
-
-echo "Seeded ${count} users."
-CONTAINER_SCRIPT
-    } > "${tmp}"
-
-    if docker compose --env-file "${ENV_FILE}" exec -T \
-        -e KEYCLOAK_REALM="${KEYCLOAK_REALM}" \
-        -e KEYCLOAK_MOODLE_CLIENT_ID="${KEYCLOAK_MOODLE_CLIENT_ID}" \
-        -e KEYCLOAK_SEED_EMAIL_DOMAIN="${KEYCLOAK_SEED_EMAIL_DOMAIN}" \
-        -e KEYCLOAK_SEED_PASSWORD_TEMPORARY="${KEYCLOAK_SEED_PASSWORD_TEMPORARY}" \
-        keycloak bash < "${tmp}"; then
-        status=0
-    else
-        status=$?
-    fi
-    rm -f "${tmp}"
-    return "${status}"
+        IFS=$'\037' read -r username first_name last_name university_role primary_group moodle_role <<< "${row}"
+        rest_ensure_user "${username}" "${first_name}" "${last_name}" "${university_role}" "${primary_group}" "${moodle_role}"
+        count=$((count + 1))
+        if (( count % 25 == 0 )); then
+            info "Seeded ${count} users..."
+        fi
+    done
 }
 
 seed_users() {
@@ -603,7 +617,7 @@ seed_users() {
         return
     fi
 
-    seed_users_batch
+    seed_users_rest
     ok "Seed users ensured: ${EXPECTED_USER_COUNT}."
 }
 
