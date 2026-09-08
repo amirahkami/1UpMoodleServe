@@ -7,6 +7,7 @@ APP_DIR="${APP_DIR:-/opt/1upmoodleserve}"
 SSH_USER="${SSH_USER:-underroot}"
 SSH_PORT="${SSH_PORT:-44422}"
 ENV_FILE="${ENV_FILE:-${APP_DIR}/.env}"
+DEPLOY_STATE_ENV="${DEPLOY_STATE_ENV:-${APP_DIR}/.generated/deploy.env}"
 SSHD_DROP_IN="/etc/ssh/sshd_config.d/01-1upmoodleserve.conf"
 
 if [[ -t 1 ]]; then
@@ -56,6 +57,16 @@ env_get() {
     else
         printf '%s\n' "${value}"
     fi
+}
+
+compose_env_args() {
+    local args=(--env-file .env)
+
+    if [[ -f "${DEPLOY_STATE_ENV}" ]]; then
+        args+=(--env-file "${DEPLOY_STATE_ENV}")
+    fi
+
+    printf '%s\n' "${args[@]}"
 }
 
 load_env() {
@@ -143,6 +154,12 @@ check_project_path() {
     else
         warn ".env not found in ${APP_DIR}"
     fi
+
+    if [[ -f "${DEPLOY_STATE_ENV}" ]]; then
+        pass "generated deploy state exists: ${DEPLOY_STATE_ENV}"
+    else
+        warn "generated deploy state not found; scripts/deploy.sh creates it"
+    fi
 }
 
 check_docker() {
@@ -181,15 +198,18 @@ check_compose() {
         return
     fi
 
-    if (cd "${APP_DIR}" && docker compose --env-file .env config >/dev/null 2>&1); then
+    local -a compose_args
+    mapfile -t compose_args < <(compose_env_args)
+
+    if (cd "${APP_DIR}" && docker compose "${compose_args[@]}" config >/dev/null 2>&1); then
         pass "docker compose config succeeds"
     else
         fail "docker compose config fails"
     fi
 
-    if (cd "${APP_DIR}" && docker compose --env-file .env ps >/dev/null 2>&1); then
+    if (cd "${APP_DIR}" && docker compose "${compose_args[@]}" ps >/dev/null 2>&1); then
         pass "docker compose ps succeeds"
-        (cd "${APP_DIR}" && docker compose --env-file .env ps)
+        (cd "${APP_DIR}" && docker compose "${compose_args[@]}" ps)
     else
         warn "docker compose ps not available yet"
     fi

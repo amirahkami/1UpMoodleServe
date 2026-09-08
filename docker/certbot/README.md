@@ -14,4 +14,4 @@ Renewal check:
 bash scripts/https.sh renew
 ```
 
-The initial issue command generates HTTP Nginx config for ACME validation, then switches `.env` to the generated HTTPS config directory and sets `MOODLE_WWWROOT=https://<MOODLE_DOMAIN>`.
+The initial issue command generates HTTP Nginx config for ACME validation, then writes HTTPS runtime mode to `.generated/deploy.env`. It does not rewrite `.env`.
