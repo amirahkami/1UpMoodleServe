@@ -51,6 +51,5 @@ The direct OIDC token test used Keycloak's password grant against the Moodle cli
 
 - Fresh VPS end-to-end flow has not been tested yet.
 - `.env` is still manually created and filled.
-- There is no single top-level fresh-VPS orchestrator.
 - DNS, HTTPS, OIDC redirect, and browser-login readiness are not yet one automated verification path.
 - Policy is undecided for users removed from `data/keycloak-users.json`.

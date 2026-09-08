@@ -13,18 +13,37 @@ This runbook is the target reproducibility path for a new Ubuntu 24.04 VPS.
 
 ## Flow
 
+The fresh install is split into two phases because SSH/user hardening must be verified before direct root SSH is disabled.
+
+Root phase, run from the repo on the VPS:
+
 ```bash
-sudo bash scripts/provision.sh
-sudo bash scripts/harden.sh ssh-step1
-sudo bash scripts/harden.sh ssh-step2
-sudo bash scripts/harden.sh system
-bash scripts/deploy.sh
-bash scripts/https.sh issue
-bash scripts/deploy.sh
-bash scripts/keycloak-realm.sh apply
-bash scripts/verify-keycloak-realm.sh
-bash scripts/moodle-oidc.sh apply
-bash scripts/moodle-oidc.sh verify
+sudo bash scripts/install-fresh.sh root
+```
+
+Then verify password SSH from a new terminal:
+
+```bash
+ssh -p 44422 underroot@<server-ip>
+```
+
+After that, disable direct root SSH:
+
+```bash
+SERVER_HOST=<server-ip> sudo bash scripts/harden.sh ssh-step2
+```
+
+Application phase, run as the SSH/app user from `/opt/1upmoodleserve`:
+
+```bash
+bash scripts/install-fresh.sh app
+```
+
+Read-only verification can be rerun with:
+
+```bash
+bash scripts/install-fresh.sh verify
+sudo bash scripts/verify-server.sh
 ```
 
 ## Expected Result

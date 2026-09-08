@@ -12,6 +12,7 @@
 - JSON-driven Keycloak apply/verify passed on the current VPS; Moodle OIDC verify and one direct seeded-user OIDC password test also passed.
 - Browser login into Moodle with a seeded Keycloak user was confirmed.
 - Deploy and HTTPS scripts now write generated runtime mode to `.generated/deploy.env` instead of mutating `.env`.
+- Fresh VPS orchestration now has one entrypoint: `scripts/install-fresh.sh`.
 
 ## Current Password Rule
 
@@ -28,6 +29,5 @@ sara.shirazi -> sara.shirazi@unrealuni
 ## Next Tasks
 
 - Decide policy for users removed from `data/keycloak-users.json`: leave, disable, or delete.
-- Add a single fresh-VPS orchestrator script.
 - Add DNS and HTTP/OIDC browser-level verification.
 - Add schema-focused validation for the JSON files.
