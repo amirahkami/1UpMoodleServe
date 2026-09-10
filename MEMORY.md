@@ -1,423 +1,111 @@
 # Project Memory
 
-## Current Purpose
+This file is a short handoff for future sessions. Formal documentation lives in `README.md`, `docs/`, and `runbooks/`.
 
-This project is for creating a production-oriented Moodle server deployment for small universities. The target is a smooth, repeatable setup that can bring Moodle online on a VPS or equivalent virtual machine within minutes.
+## Working Rules
 
-## Target Deployment
+- The repo is the product.
+- A VPS is only a disposable test bench.
+- Manual VPS fixes are not enough. Important fixes must become repo code or docs.
+- Do not run commands on macOS unless the user gives explicit green light.
+- Never commit or record real secrets.
 
-- Target host: generic VPS / VM, with DigitalOcean as an example provider.
-- Operating system: Ubuntu Server 24.04 LTS.
-- Deployment model: one university per VM.
-- Moodle model: one Moodle instance per VM.
-- Runtime: Docker Compose.
-- Scope: production deployment, not a local development-only stack.
+## Current Repo State
 
-## Locked Technical Decisions
+- Workspace: `/Users/amir/Desktop/sandbox/1UpMoodleServe`
+- GitHub repo: `https://github.com/amirahkami/1UpMoodleServe`
+- Development branch: `dev`
+- Deployment branch policy: `main` is for deployment
+- Latest known local commit before doc cleanup: `f8c0f6f Add fresh VPS install orchestrator`
 
-- Do not run project services directly on macOS.
-- Project work should run through Docker / Docker Compose.
-- Docker Desktop exists on the local macOS machine and the Docker daemon is expected to be running.
-- First implementation uses Docker Compose, not Kubernetes, Podman, native installs, or Ansible.
-- Moodle target version decision: Moodle 5.2.
-- Moodle 5.2 is not an LTS release, but is preferred over Moodle 4.5 LTS because Moodle 4.5 is considered too old for this project.
-- Moodle 5.2 requires PHP 8.3 and PostgreSQL 16 or newer; this project targets PostgreSQL 18.
-- PostgreSQL target decision: `postgres:18`.
-- Keycloak target decision: `quay.io/keycloak/keycloak:26.7.2`.
-- Moodle should run through a custom production Docker image built by this project.
-- Moodle runtime should be PHP-FPM.
-- Web server should be Nginx.
-- Database should be PostgreSQL.
-- Identity provider should be Keycloak.
-- DNS is managed through Cloudflare nameservers.
-- Moodle and Keycloak should each have their own subdomain.
+## Product Goal
 
-## Core Container Layout
+Deploy a full Moodle platform from a fresh Ubuntu 24.04 VPS:
 
-The first milestone should start these services:
+- Docker Engine and Docker Compose
+- hardened SSH and firewall
+- PostgreSQL
+- Moodle
+- Keycloak
+- Nginx
+- Let's Encrypt HTTPS
+- Keycloak realm/users
+- Moodle OIDC login
 
-- PostgreSQL container.
-- Keycloak container.
-- Moodle PHP-FPM container.
-- Nginx container.
+## Current Implementation
 
-## Database Layout
+- `scripts/install-fresh.sh` coordinates fresh VPS setup.
+- `scripts/provision.sh` installs Docker and host dependencies.
+- `scripts/harden.sh` handles SSH and system hardening.
+- `scripts/deploy.sh` builds and starts the Compose stack.
+- `scripts/https.sh` issues/renews Let's Encrypt certificates.
+- `scripts/keycloak-realm.sh` applies Keycloak desired state.
+- `scripts/verify-keycloak-realm.sh` verifies Keycloak state.
+- `scripts/moodle-oidc.sh` applies/verifies Moodle OIDC.
+- `scripts/verify-server.sh` verifies host and Compose state.
 
-- One PostgreSQL server/container.
-- Separate PostgreSQL database and user for Moodle.
-- Separate PostgreSQL database and user for Keycloak.
-- PostgreSQL data must be persisted in a Docker volume.
+## Desired State
 
-## Moodle Data
+- Keycloak realm file: `data/keycloak-realm.json`
+- Keycloak users file: `data/keycloak-users.json`
+- Moodle OIDC file: `data/moodle-oidc.json`
+- Realm: `unrealuni`
+- Keycloak client: `moodle`
+- Seeded users: 130
+- Seed password pattern: `{username}@unrealuni`
+- Example user: `sara.shirazi / sara.shirazi@unrealuni`
 
-- Moodle data must be persisted in a Docker volume.
-- Backup support is required later, but is not part of the first milestone.
+## Current Test VPS
 
-## Custom Moodle Plugin
+- VPS IP: `138.68.64.183`
+- Project path: `/opt/1upmoodleserve`
+- SSH user: `underroot`
+- SSH port: `44422`
+- SSH is password-based.
+- Current domains:
+  - `unrealuni.xyz`
+  - `moodle.unrealuni.xyz`
+  - `iam.unrealuni.xyz`
 
-- The project uses an in-house Moodle block plugin.
-- The plugin source is stored in a private GitHub repository.
-- A GitHub token or another credential will be provided later for plugin access.
-- The plugin sends Moodle data to an external university REST API.
-- Moodle initiates outbound HTTPS requests to the external API.
-- The external API does not initiate callbacks to Moodle.
-- Authentication uses an `X-API-KEY` header.
-- The API token is stored in the plugin configuration inside Moodle.
-- Plugin installation/configuration automation is undecided.
+This VPS is not the product and may be destroyed.
 
-## Test Courses
+## Last Known Working VPS State
 
-- Three Moodle courses are needed for plugin testing.
-- The in-house block plugin must be added to courses for testing.
-- Course creation may be manual or automated; this is undecided.
+Confirmed before this cleanup:
 
-## Hardening
+- Docker Compose deploy completed.
+- Moodle was reachable over HTTPS.
+- Keycloak was reachable over HTTPS.
+- HTTP redirected to HTTPS.
+- Let's Encrypt certificate worked for both Moodle and Keycloak names.
+- Keycloak realm `unrealuni` was applied from JSON.
+- Forced Keycloak user reseed completed for 130 users.
+- Keycloak verifier completed with `313 pass, 0 warn, 0 fail`.
+- Moodle OIDC apply completed.
+- Moodle OIDC verifier passed.
+- Moodle login page showed `Log in with UnrealUni Login`.
+- Moodle OAuth redirect returned HTTP 303 to Keycloak.
+- Direct OIDC token test passed for `sara.shirazi`.
+- Browser login into Moodle as `sara.shirazi` was confirmed.
 
-- A hardening script is required later.
-- It should cover security and resilience basics.
-- SSH should be moved away from port `22`.
-- Firewall configuration is required.
-- The exact ordering of hardening versus service deployment is undecided.
+## Important Fixes Already Captured In Repo
 
-## First Milestone
+- Docker firewall forwarding fixed for nftables.
+- Docker is restarted after nftables `flush ruleset`.
+- `underroot` is added to the `docker` group when possible.
+- `.env` placeholder checks ignore comments.
+- PostgreSQL 18 volume mount uses `/var/lib/postgresql`.
+- Moodle image includes required PHP PostgreSQL extensions.
+- Moodle first install runs only when the database is empty.
+- Moodle 5.2 is served from `/public`.
+- Runtime mode is written to `.generated/deploy.env`, not `.env`.
 
-Create the repo structure needed to start the core services with Docker Compose:
+## Known Gaps
 
-- `docker-compose.yml`.
-- Moodle PHP-FPM Dockerfile and image files.
-- Nginx configuration.
-- PostgreSQL configuration / environment structure as needed.
-- Keycloak service configuration.
-
-Out of scope for the first milestone:
-
-- Server hardening.
-- Plugin automation.
-- Course automation.
-- Final execution order.
-- Backup support.
-- Final domain / HTTPS / reverse proxy strategy.
-
-## Current Workspace State
-
-As of 2026-08-25:
-
-- Workspace path: `/Users/amir/Desktop/sandbox/1UpMoodleServe`.
-- GitHub repository: `https://github.com/amirahkami/1UpMoodleServe`.
-- GitHub repository visibility: public.
-- Branch policy: `dev` is for development, `main` is for deployment.
-- Current Git state: local `dev` branch exists and tracks `origin/dev`.
-- Initial commit on `dev`: `0b90590 chore: initialize deployment project`.
-- Existing durable context files: `PROJECT.md`, `techstack.md`, and this `MEMORY.md`.
-- `readme.md` contains initial deployment documentation.
-- `docs/` and `runbooks/` currently contain no files.
-- The folder is a Git repository.
-
-## VPS State
-
-As of 2026-08-25:
-
-- A fresh VPS has been created.
-- VPS operating system: Ubuntu 24.04 LTS x64.
-- VPS IP address: `138.68.64.183`.
-- Initial login method: password-based SSH, not SSH key authentication.
-- Confirmed SSH login works as `root`.
-- Confirmed hostname from login banner: `moodle`.
-- Confirmed detected OS from login banner: Ubuntu 24.04.4 LTS.
-- Login banner reported 33 pending package updates, including 31 standard security updates.
-- SSH password exists, but must not be stored in project files.
-- Preferred deployment path: deploy and validate directly on the VPS, not through Docker Desktop on macOS.
-- VPS project code path decision: `/opt/1upmoodleserve`.
-- Important operating rule from the user: do not run commands or scripts on macOS without explicit green light.
-
-## Domain Decision
-
-- Registered domain: `unrealuni.xyz`.
-- DNS is managed through Cloudflare.
-- Moodle and Keycloak require separate subdomains.
-- Moodle domain decision: `moodle.unrealuni.xyz`.
-- Keycloak domain decision: `iam.unrealuni.xyz`.
-- DNS records confirmed via `1.1.1.1`:
-  - `unrealuni.xyz -> 138.68.64.183`.
-  - `moodle.unrealuni.xyz -> 138.68.64.183`.
-  - `iam.unrealuni.xyz -> 138.68.64.183`.
-- Cloudflare records are set to DNS-only for setup.
-
-## HTTPS Decision
-
-- Use Let's Encrypt certificates on the VPS.
-- Run Certbot as a Docker container.
-- Nginx should serve Moodle and Keycloak over HTTPS.
-- Cloudflare is used for DNS pointing to the VPS, not as the primary certificate strategy.
-- Ports `80/tcp` and `443/tcp` must remain open for HTTP validation and HTTPS traffic.
-
-## Reverse Proxy Decision
-
-- Use Nginx as the only public web entrypoint.
-- Public inbound HTTP/HTTPS traffic should terminate at Nginx.
-- Nginx routes `moodle.unrealuni.xyz` to Moodle internally.
-- Nginx routes `iam.unrealuni.xyz` to Keycloak internally.
-- Moodle, Keycloak, and PostgreSQL should not expose public host ports directly unless a specific operational need appears.
-
-## Environment / Secrets Decision
-
-- Commit `.env.example` to GitHub with placeholder values only.
-- Keep real `.env` only on the VPS.
-- Never commit real passwords, API keys, Moodle admin credentials, Keycloak admin credentials, database passwords, or plugin API keys.
-
-## Persistence Decision
-
-- Use Docker named volumes for persistent service data.
-- Initial named volumes should include PostgreSQL data and Moodle data.
-- Avoid host bind-mounted service data for the first milestone unless a specific operational need appears.
-
-## Docker Installation Decision
-
-- Install Docker Engine from Docker's official apt repository.
-- Install the Docker Compose plugin from Docker's official apt repository.
-- Do not use Ubuntu's default `docker.io` package for this project.
-
-## Firewall Decision
-
-- Use `nftables`, not UFW.
-- Firewall policy should be default-deny for inbound traffic.
-- Required inbound ports:
-  - `44422/tcp` for SSH.
-  - `80/tcp` for HTTP.
-  - `443/tcp` for HTTPS.
-- Outbound traffic should be allowed.
-- Because password-based SSH remains enabled, fail2ban is required.
-- Docker bridge/private-subnet forwarding must be allowed in nftables. A default-drop forward chain without Docker rules blocks Docker image builds and container network egress.
-- After nftables reloads with `flush ruleset`, Docker must be restarted so Docker recreates its managed bridge/NAT rules.
-
-## SSH Policy Decision
-
-- Create a dedicated sudo user: `underroot`.
-- Keep password-based SSH authentication enabled.
-- Change SSH from port `22` to port `44422`.
-- Disable direct root SSH login after confirming `underroot` works.
-- Restrict SSH login to `underroot`.
-- Configure fail2ban for SSH on port `44422`.
-- SSH hardening must be two-step to avoid lockout:
-  - Step 1: create/configure `underroot`, set password, open/activate SSH on port `44422`.
-  - Step 2: only after `ssh -p 44422 underroot@138.68.64.183` is confirmed working, disable direct root SSH.
-- The `underroot` password must be a new strong password.
-- The script must ask the user to confirm the password has been saved outside the repo before continuing toward root SSH disablement.
-
-## Next Practical Step
-
-Configure HTTPS certificates for Moodle and Keycloak, then configure Keycloak realm/client integration with Moodle OIDC.
-
-## Keycloak Realm Direction
-
-- Use the old `/Users/amir/Desktop/sandbox/1UpKeyCloak` project only as design inspiration, not as a 1:1 realm copy.
-- Keep the university simulation idea:
-  - identity type through realm roles.
-  - university structure through groups.
-  - Moodle-specific permission hints through Moodle client roles.
-  - OIDC claims for Moodle integration.
-- Current realm target:
-  - Realm: `unrealuni`.
-  - Client: `moodle` only.
-  - Groups: `Faculty of Medicine`, `Faculty of Humanities`, `Faculty of Engineering`, `IT-Services`, `Finance`.
-  - Realm roles: `student`, `staff`, `alumni`, `guest`.
-  - Moodle client roles: `admin`, `manager`, `course_creator`, `teacher`, `student`, `guest`.
-  - Claims: `groups`, `primary_group`, `university_role`, `moodle_roles`.
-  - Seeded simulation users: 130 total, with 50 students, 20 staff, 50 alumni, and 10 guests.
-  - Seeded user emails use `<username>@unrealuni.xyz`.
-  - Usernames should use short first names and culturally plausible place-derived surnames, with globally mixed representation in each user group.
-  - Avoid numbered users such as `student001` and avoid sensitive religious/political place references.
-- Changes from the old local dev realm:
-  - Realm name changes from `university-dev` to `unrealuni`.
-  - Clients are reduced from `moodle`, `ilias`, and `jupyterhub` to `moodle` only.
-  - URLs use real HTTPS domains instead of local HTTP URLs.
-  - Client secrets and seeded-user temporary password come from VPS `.env`, not from committed files.
-- `scripts/keycloak-realm.sh reset` exists for test-bench cleanup and requires explicit `CONFIRM_KEYCLOAK_REALM_RESET=unrealuni`.
-- `scripts/verify-keycloak-realm.sh` exists as a read-only realm verifier.
-- The test-bench VPS `unrealuni` realm was reset after the numbered-user seed issue.
-- Current public realm status:
-  - Discovery endpoint works: `https://iam.unrealuni.xyz/realms/unrealuni/.well-known/openid-configuration`.
-  - Issuer is `https://iam.unrealuni.xyz/realms/unrealuni`.
-  - Moodle client redirect URI is `https://moodle.unrealuni.xyz/*`.
-  - Seed users use realistic globally mixed usernames and `@unrealuni.xyz` email addresses.
-  - `scripts/verify-keycloak-realm.sh` result on VPS: 38 pass, 0 warnings, 0 failures.
-
-## End Of Day 2026-08-27
-
-- Stop point: Moodle and Keycloak are both live over HTTPS.
-- Keycloak realm `unrealuni` is created and verified.
-- Realm verification result: 38 pass, 0 warnings, 0 failures.
-- Latest completed milestone: reproducible Keycloak realm setup and verifier.
-- Next session should start with Moodle OIDC integration:
-  - Check Moodle authentication plugins.
-  - Configure Keycloak/OIDC issuer in Moodle.
-  - Test login with seeded users.
-  - Move any manual Moodle OIDC steps into automation or runbook.
-
-## Script Layout Decision
-
-- Use fewer scripts with subcommands where needed.
-- Planned scripts:
-  - `scripts/provision.sh`: prepare fresh Ubuntu VPS for Docker-based deployment.
-  - `scripts/harden.sh`: support subcommands such as `ssh-step1`, `ssh-step2`, and `system`.
-  - `scripts/deploy.sh`: deploy/update the Docker Compose application stack.
-  - `scripts/verify-server.sh`: read-only verification of host and deployment state.
-
-## Implemented Files
-
-- `scripts/provision.sh` has been created.
-- Current `provision.sh` behavior:
-  - Requires root.
-  - Requires Ubuntu 24.04.
-  - Updates system packages.
-  - Installs base tools.
-  - Removes conflicting Docker packages.
-  - Configures Docker's official apt repository.
-  - Installs Docker Engine, Buildx plugin, and Docker Compose plugin.
-  - Enables and starts Docker.
-  - Creates `/opt/1upmoodleserve`.
-  - Verifies Docker and Docker Compose are available.
-- `scripts/harden.sh` has been created.
-- Current `harden.sh` subcommands:
-  - `ssh-step1`: creates/configures `underroot`, prompts for a new password, requires saved-password confirmation, moves SSH to `44422`, keeps root SSH temporarily.
-  - `ssh-step2`: requires confirmation that `underroot` login works, then disables direct root SSH and restricts SSH to `underroot`.
-  - `system`: configures unattended security updates, sysctl hardening, `/dev/shm`, login banner, nftables, fail2ban, unused-service removal, and `su` restriction.
-- Initial Docker Compose skeleton has been created:
-  - `.env.example`.
-  - `docker-compose.yml`.
-  - Moodle PHP-FPM image scaffold under `docker/moodle/`.
-  - Nginx HTTP bootstrap config under `docker/nginx/`.
-  - PostgreSQL first-run database/user init script under `docker/postgres/init/`.
-  - Certbot notes under `docker/certbot/`.
-- `scripts/deploy.sh` has been created.
-- Current `deploy.sh` behavior:
-  - Requires project root.
-  - Warns if not running from `/opt/1upmoodleserve`.
-  - Requires `.env`.
-  - Fails if `.env` contains `CHANGE_ME`.
-  - Verifies Docker and Docker Compose are available.
-  - Runs `docker compose --env-file .env config`.
-  - Builds the Moodle image.
-  - Starts the HTTP bootstrap stack: PostgreSQL, Keycloak, Moodle, and Nginx.
-  - Prints `docker compose ps`.
-  - Does not configure HTTPS yet.
-- `scripts/verify-server.sh` has been created.
-- Current `verify-server.sh` behavior:
-  - Read-only server audit.
-  - Checks Ubuntu version, DNS, project path, `.env`, Docker, Compose config/status, SSH policy, nftables/fail2ban, unattended upgrades, sysctl basics, and `/dev/shm`.
-
-## VPS Execution Notes
-
-- The VPS was provisioned with Docker Engine and Docker Compose from Docker's official apt repository.
-- SSH hardening was applied:
-  - `underroot` exists and has sudo access.
-  - SSH listens on port `44422`.
-  - Direct root SSH is disabled.
-  - Password login remains enabled by project decision.
-- System hardening was applied:
-  - nftables default-deny inbound policy.
-  - inbound ports `44422`, `80`, and `443` allowed.
-  - fail2ban active for SSH.
-  - unattended security upgrades configured.
-  - `/dev/shm` hardened.
-- Real `.env` exists only on the VPS at `/opt/1upmoodleserve/.env`; secrets must not be committed or written into memory.
-- First deploy attempt reached Moodle image build but container package downloads could not reach Debian mirrors because nftables forward policy and flushed Docker NAT rules blocked container egress. The hardening script now includes Docker forwarding rules and restarts Docker after nftables reload.
-- After container networking was fixed, the Moodle image build reached PHP extension compilation and failed because `mbstring` requires `libonig-dev`. The Moodle Dockerfile now includes that build dependency.
-- PostgreSQL 18 container startup failed because the Compose volume was mounted at `/var/lib/postgresql/data`. For `postgres:18`, the persistent volume must be mounted at `/var/lib/postgresql` so the image can use its major-version-specific data directory layout. This is fixed.
-- Moodle first deploy needed explicit bootstrap handling:
-  - The Moodle container now generates managed `config.php` on startup.
-  - The Moodle container runs CLI install once when the Moodle database is empty.
-  - The Moodle container skips install when Moodle tables already exist.
-  - Required PHP extensions include both `pgsql` and `pdo_pgsql`.
-- Moodle 5.2 requires the web server to serve Moodle from its `/public` directory. Nginx now uses `/var/www/html/public` as the Moodle root.
-- HTTP bootstrap is currently successful:
-  - Moodle is reachable externally at `http://moodle.unrealuni.xyz/` and redirects to `http://moodle.unrealuni.xyz/login/index.php` with final HTTP 200.
-  - Keycloak is reachable externally at `http://iam.unrealuni.xyz/` and redirects to `http://iam.unrealuni.xyz/admin/master/console/` with final HTTP 200.
-  - HTTPS is still not configured.
-
-## VPS Execution State
-
-- The public GitHub repository `dev` branch has been cloned on the VPS to `/opt/1upmoodleserve`.
-- Baseline `scripts/verify-server.sh` was run on the VPS before provisioning.
-- Baseline result:
-  - DNS passed for `unrealuni.xyz`, `moodle.unrealuni.xyz`, and `iam.unrealuni.xyz`.
-  - Project path and `docker-compose.yml` exist on the VPS.
-  - `.env` does not exist yet.
-  - Docker is not installed yet.
-  - SSH hardening has not run yet.
-  - fail2ban is not installed yet.
-  - nftables exists but project firewall rules are not configured yet.
-- `scripts/provision.sh` has been run successfully on the VPS.
-- Provisioning installed Docker Engine `29.7.2` and Docker Compose plugin `v5.5.0` from Docker's official apt repository.
-- Post-provision `scripts/verify-server.sh` result: 12 pass, 10 warnings, 0 failures.
-- Remaining post-provision warnings are expected before `.env` creation and hardening:
-  - `.env` missing.
-  - SSH hardening not run.
-  - fail2ban not installed.
-  - project nftables rules not configured.
-  - `/dev/shm` not hardened yet.
-- Docker set `net.ipv4.ip_forward = 1`; this is required for Docker container networking.
-- `scripts/harden.sh` and `scripts/verify-server.sh` were adjusted to treat `net.ipv4.ip_forward = 1` as the correct Docker-host state.
-- `scripts/harden.sh ssh-step1` has been run successfully on the VPS.
-- SSH as `underroot` on port `44422` has been verified successfully.
-- `scripts/harden.sh ssh-step2` has been run successfully on the VPS.
-- Direct root SSH is disabled.
-- SSH as `underroot` on port `44422` was re-verified after disabling root SSH.
-- Root SSH on port `44422` was checked and denied as expected.
-- `scripts/harden.sh system` has been run successfully on the VPS.
-- SSH as `underroot` on port `44422` was re-verified after firewall hardening.
-- Post-hardening `scripts/verify-server.sh` result: 25 pass, 2 warnings, 0 failures.
-- Remaining post-hardening warnings are expected until `.env` is created and the Compose stack is deployed:
-  - `.env` missing.
-  - Compose check skipped because `.env` is missing.
-- The VPS login banner reports that a system restart is required after package upgrades.
-- `/opt/1upmoodleserve` ownership has been changed to `underroot:underroot` for future Git pull/deploy operations.
-- `/opt/1upmoodleserve/.env` has been generated on the VPS with real secrets and file mode `600`.
-- Real `.env` values must not be committed or stored in project memory.
-- First verifier run after `.env` creation reported one failure because the placeholder check matched `CHANGE_ME` inside a comment.
-- `scripts/deploy.sh` and `scripts/verify-server.sh` have been fixed so placeholder detection only checks active env assignment lines, not comments.
-- The placeholder-check fix has been pulled on the VPS.
-- Post-fix `scripts/verify-server.sh` result: 29 pass, 0 warnings, 0 failures.
-- First `scripts/deploy.sh` attempt failed before containers started because `underroot` did not have permission to access `/var/run/docker.sock`.
-- Fixed by adding `underroot` to the `docker` group and using a fresh SSH session before rerunning deploy.
-- `scripts/deploy.sh` has been updated to check Docker daemon access before build/start.
-- `scripts/harden.sh ssh-step1` has been updated to add `underroot` to the `docker` group when the group exists.
-- Docker image builds from containers initially failed after nftables reload because Docker bridge forwarding and NAT were missing. `scripts/harden.sh system` now allows Docker bridge/private-subnet forwarding and restarts Docker after `flush ruleset`.
-- PostgreSQL is healthy using the Docker volume mounted at `/var/lib/postgresql` for `postgres:18`.
-- The fresh broken PostgreSQL volume from the first failed boot was removed only after explicit approval, then the stack was redeployed.
-- Moodle image includes required PHP extensions and dependencies, including `libonig-dev`, `pgsql`, and `pdo_pgsql`.
-- Moodle config currently uses `MOODLE_WWWROOT=http://moodle.unrealuni.xyz`, `$CFG->reverseproxy = false`, and `$CFG->sslproxy = false`.
-- Dockerfile layer order was improved so entrypoint-only changes do not invalidate the slow Moodle source ownership layer.
-- Current HTTP bootstrap status as of 2026-08-27:
-  - Postgres, Keycloak, Moodle, and Nginx containers are running.
-  - Postgres is healthy.
-  - Internal VPS checks: Moodle final HTTP 200 at the login URL; Keycloak final HTTP 200 at the admin console URL.
-  - External checks from macOS: Moodle final HTTP 200 at the login URL; Keycloak final HTTP 200 at the admin console URL.
-- Post-bootstrap VPS verifier result as of 2026-08-27: 31 pass, 0 warnings, 0 failures.
-- Latest pushed implementation commits on `origin/dev` include:
-  - `651656a feat: initialize moodle on first deploy`.
-  - `88caf7e fix: add moodle pgsql extension`.
-  - `5c4b32f fix: disable moodle reverse proxy guard`.
-  - `63a98f7 chore: improve moodle image layer caching`.
-  - `172a221 fix: serve moodle public directory`.
-- HTTPS workflow was added in commit `757d06f feat: add https certificate workflow`.
-- HTTPS implementation state:
-  - `docker/nginx/http.d` contains the HTTP bootstrap Nginx configs.
-  - `docker/nginx/https.d` contains HTTPS configs that use the shared certificate path `/etc/letsencrypt/live/1upmoodleserve`.
-  - `scripts/https.sh issue` temporarily sets `NGINX_CONF_DIR=./docker/nginx/http.d`, issues the Let's Encrypt certificate, then sets `NGINX_CONF_DIR=./docker/nginx/https.d` and `MOODLE_WWWROOT=https://moodle.unrealuni.xyz`.
-  - `scripts/https.sh renew` runs Certbot renewal and reloads Nginx.
-- HTTPS workflow has been pulled/executed on the VPS.
-- Current HTTPS status as of 2026-08-27:
-  - `https://moodle.unrealuni.xyz/` redirects to `https://moodle.unrealuni.xyz/login/index.php` and returns final HTTP 200.
-  - `https://iam.unrealuni.xyz/` redirects to `https://iam.unrealuni.xyz/admin/master/console/` and returns final HTTP 200.
-  - HTTP now redirects to HTTPS for both Moodle and Keycloak.
-  - Let's Encrypt certificate is valid for both `moodle.unrealuni.xyz` and `iam.unrealuni.xyz`.
-  - Certificate issuer observed externally: Let's Encrypt `YE1`.
-  - Certificate validity observed externally: starts 2026-08-27 08:49:53 UTC, expires 2026-11-25 08:49:52 UTC.
-- Current likely SSH block state as of 2026-08-27:
-  - Web services still respond over HTTP.
-  - SSH TCP connect to `138.68.64.183:44422` hangs from this Mac.
-  - Local public IP observed by `curl https://ifconfig.me`: `134.147.21.206`.
-  - Hardening script fail2ban config uses `bantime = 3600`, `findtime = 600`, and `maxretry = 3`.
-  - Recovery through the VPS provider console: `sudo fail2ban-client set sshd unbanip 134.147.21.206`.
-- User added `134.147.21.206` to fail2ban ignore list and unbanned it through the DigitalOcean console.
+- Fresh VPS end-to-end flow still needs a clean full test.
+- `.env` is still manually created.
+- Public DNS/HTTPS/OIDC flow needs one automated verifier.
+- Policy is undecided for users removed from `data/keycloak-users.json`.
+- Moodle test courses are not automated.
+- In-house Moodle plugin install/config is not automated.
+- Backup and restore are not implemented.

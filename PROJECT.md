@@ -1,15 +1,59 @@
-- What ever you do, do it your heart and brain together.
+# Project Scope
 
-## Project Description
+## Goal
 
-The goal of this project focued on spin up a production grade Moodle server on a virtual machine or equivalent environment. The entire operation will carry on smoothly within minutes. The need is to make moodle really online for small universites. It needs also use Identity Manager for moodle. we will use Keycloak however we will document the techstack in another md file.
+Build a repeatable deployment repo for a production-grade Moodle platform.
 
-the initial idea of entire workflow looks as following:
-1. On Digital Ocean or anywhere else we create a droplet or VPS, actually it does not matter where
-2. a provisioning script installs all dependencies, update server and prepare the environment for real deployment and also another test scripts should check if every needs are up and run, some services need restart after installation for example. database and keycloak should created.
-3. a hardening script should harden the server against threads, and secure firewalls, also we prefer change some critical ports like 22. hardening script should make it secure
-4. then we need database and keycloak realm
-5. moodle deployment
-6. installing a moodle plugin we developed. this plugin sends http requests to another server on another university over internet, so it is important moodle send http request to another API at another university
-7. 3 moodle courses
-8. 
+The repo should make this possible:
+
+1. Create a fresh Ubuntu VPS.
+2. Clone this repo.
+3. Fill real secrets in `.env`.
+4. Run the documented scripts.
+5. Get Moodle, Keycloak, PostgreSQL, HTTPS, and OIDC login working.
+
+## Product Rule
+
+The repo is the product.
+
+The current VPS is only a test bench. Manual VPS fixes are not enough. If a fix matters, it must become code or documentation in this repo.
+
+## Target Users
+
+Small universities that need:
+
+- Moodle online quickly
+- identity management through Keycloak
+- simple server hardening
+- repeatable deployment
+- a path for an in-house Moodle plugin
+
+## In Scope
+
+- Ubuntu 24.04 VPS provisioning
+- Docker Engine and Docker Compose setup
+- host hardening
+- PostgreSQL container
+- Moodle container
+- Keycloak container
+- Nginx reverse proxy
+- Let's Encrypt HTTPS
+- Keycloak realm/client/users from JSON
+- Moodle OIDC configuration from JSON
+- read-only verification scripts
+
+## Later Scope
+
+- automated Moodle test courses
+- automated in-house Moodle plugin install
+- plugin configuration
+- backup and restore
+- stronger end-to-end public verification
+
+## Out Of Scope For Now
+
+- Kubernetes
+- Ansible
+- native Moodle installation
+- multi-server architecture
+- local macOS deployment as the target

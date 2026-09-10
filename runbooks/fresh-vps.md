@@ -1,45 +1,71 @@
 # Fresh VPS Deployment
 
-This runbook is the target reproducibility path for a new Ubuntu 24.04 VPS.
+This is the target reproducibility path for a new Ubuntu 24.04 VPS.
 
 ## Inputs
 
-- DNS records for root, Moodle, and Keycloak domains point to the VPS.
-- Cloudflare records are DNS-only during setup.
-- Project code is available on the VPS under `/opt/1upmoodleserve`.
-- Real secrets exist only in `/opt/1upmoodleserve/.env`.
-- Runtime deployment mode is generated in `/opt/1upmoodleserve/.generated/deploy.env`.
-- Desired platform state comes from committed JSON files under `data/`.
+- Ubuntu 24.04 VPS
+- DNS records point to the VPS IP
+- Cloudflare records are DNS-only during setup
+- repo is available on the VPS under `/opt/1upmoodleserve`
+- real secrets are in `/opt/1upmoodleserve/.env`
+- desired platform state is in `data/`
 
-## Flow
+## Rule
 
-The fresh install is split into two phases because SSH/user hardening must be verified before direct root SSH is disabled.
+If a manual step is needed, record it. If it matters, automate it in the repo.
 
-Root phase, run from the repo on the VPS:
+## 1. Root Phase
+
+Run from the repo on the VPS:
 
 ```bash
 sudo bash scripts/install-fresh.sh root
 ```
 
-Then verify password SSH from a new terminal:
+This provisions the server, creates `underroot`, moves SSH to port `44422`, and applies base hardening.
+
+## 2. Verify SSH
+
+From a new terminal:
 
 ```bash
 ssh -p 44422 underroot@<server-ip>
 ```
 
-After that, disable direct root SSH:
+Do not continue until this works.
+
+## 3. Disable Root SSH
 
 ```bash
 SERVER_HOST=<server-ip> sudo bash scripts/harden.sh ssh-step2
 ```
 
-Application phase, run as the SSH/app user from `/opt/1upmoodleserve`:
+## 4. Create `.env`
+
+On the VPS:
+
+```bash
+cd /opt/1upmoodleserve
+cp .env.example .env
+chmod 600 .env
+```
+
+Fill all real values. Do not commit `.env`.
+
+## 5. Application Phase
+
+Run as `underroot` from `/opt/1upmoodleserve`:
 
 ```bash
 bash scripts/install-fresh.sh app
 ```
 
-Read-only verification can be rerun with:
+This deploys the stack, issues HTTPS certificates, applies Keycloak state, and applies Moodle OIDC.
+
+## 6. Verify
+
+Run:
 
 ```bash
 bash scripts/install-fresh.sh verify
