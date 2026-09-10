@@ -133,6 +133,23 @@ compose() {
     docker compose --env-file "${ENV_FILE}" "$@"
 }
 
+wait_for_moodle() {
+    section "Wait for Moodle"
+
+    local attempt
+
+    for attempt in $(seq 1 60); do
+        if compose exec -T moodle php -r 'define("CLI_SCRIPT", true); require_once("/var/www/html/config.php"); echo "ok\n";' >/dev/null 2>&1; then
+            ok "Moodle is ready."
+            return
+        fi
+
+        sleep 5
+    done
+
+    die "Moodle did not become ready."
+}
+
 moodle_php() {
     compose exec -T \
         -e MOODLE_OAUTH2_ISSUER_NAME="${MOODLE_OAUTH2_ISSUER_NAME}" \
@@ -378,6 +395,7 @@ main() {
             require_commands
             validate_data
             load_env
+            wait_for_moodle
             apply_oidc
             ;;
         verify)
@@ -387,6 +405,7 @@ main() {
             require_commands
             validate_data
             load_env
+            wait_for_moodle
             verify_oidc
             ;;
         -h|--help|help|'')

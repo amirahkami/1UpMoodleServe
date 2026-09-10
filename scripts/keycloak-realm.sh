@@ -173,13 +173,22 @@ kc_with_json() {
 authenticate() {
     section "Authenticate to Keycloak"
 
-    kc config credentials \
-        --server http://localhost:8080 \
-        --realm master \
-        --user "${KEYCLOAK_ADMIN}" \
-        --password "${KEYCLOAK_ADMIN_PASSWORD}" >/dev/null
+    local attempt
 
-    ok "Authenticated with the Keycloak admin CLI."
+    for attempt in $(seq 1 60); do
+        if kc config credentials \
+            --server http://localhost:8080 \
+            --realm master \
+            --user "${KEYCLOAK_ADMIN}" \
+            --password "${KEYCLOAK_ADMIN_PASSWORD}" >/dev/null 2>&1; then
+            ok "Authenticated with the Keycloak admin CLI."
+            return
+        fi
+
+        sleep 5
+    done
+
+    die "Keycloak did not become ready for admin login."
 }
 
 urlencode() {
