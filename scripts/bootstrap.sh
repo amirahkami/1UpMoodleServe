@@ -83,9 +83,9 @@ prompt_secret() {
 
     while true; do
         read -r -s -p "${label}: " first
-        echo ""
+        echo "" >&2
         read -r -s -p "Confirm ${label}: " second
-        echo ""
+        echo "" >&2
         [[ -n "${first}" ]] || { warn "Password cannot be empty." >&2; continue; }
         [[ "${first}" == "${second}" ]] || { warn "Passwords do not match." >&2; continue; }
         [[ "${#first}" -ge 12 ]] || { warn "Use at least 12 characters." >&2; continue; }
