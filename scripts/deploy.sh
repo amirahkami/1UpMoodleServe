@@ -197,8 +197,10 @@ show_status() {
 
     local moodle_domain
     local keycloak_domain
+    local root_domain
     local moodle_wwwroot
     local keycloak_scheme
+    root_domain="$(env_get ROOT_DOMAIN)"
     moodle_domain="$(env_get MOODLE_DOMAIN)"
     keycloak_domain="$(env_get KEYCLOAK_DOMAIN)"
     moodle_wwwroot="$(runtime_env_get MOODLE_WWWROOT "http://${moodle_domain}")"
@@ -209,6 +211,7 @@ show_status() {
 
     echo ""
     info "Configured endpoints:"
+    [[ -n "${root_domain}" ]] && info "  ${keycloak_scheme}://${root_domain}"
     info "  ${moodle_wwwroot}"
     info "  ${keycloak_scheme}://${keycloak_domain}"
 }

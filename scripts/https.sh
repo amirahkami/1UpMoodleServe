@@ -115,11 +115,13 @@ compose() {
 }
 
 load_required_env() {
+    ROOT_DOMAIN="$(env_get ROOT_DOMAIN)"
     MOODLE_DOMAIN="$(env_get MOODLE_DOMAIN)"
     KEYCLOAK_DOMAIN="$(env_get KEYCLOAK_DOMAIN)"
     LETSENCRYPT_EMAIL="$(env_get LETSENCRYPT_EMAIL)"
     LETSENCRYPT_CERT_NAME="$(env_get LETSENCRYPT_CERT_NAME "${DEFAULT_CERT_NAME}")"
 
+    [[ -n "${ROOT_DOMAIN}" ]] || die "ROOT_DOMAIN is missing in ${ENV_FILE}."
     [[ -n "${MOODLE_DOMAIN}" ]] || die "MOODLE_DOMAIN is missing in ${ENV_FILE}."
     [[ -n "${KEYCLOAK_DOMAIN}" ]] || die "KEYCLOAK_DOMAIN is missing in ${ENV_FILE}."
     [[ -n "${LETSENCRYPT_EMAIL}" ]] || die "LETSENCRYPT_EMAIL is missing in ${ENV_FILE}."
@@ -147,6 +149,7 @@ issue_certificates() {
         --agree-tos \
         --no-eff-email \
         --keep-until-expiring \
+        -d "${ROOT_DOMAIN}" \
         -d "${MOODLE_DOMAIN}" \
         -d "${KEYCLOAK_DOMAIN}"
 
@@ -193,6 +196,7 @@ issue() {
 
     echo ""
     info "HTTPS endpoints:"
+    info "  https://${ROOT_DOMAIN}"
     info "  https://${MOODLE_DOMAIN}"
     info "  https://${KEYCLOAK_DOMAIN}"
 }

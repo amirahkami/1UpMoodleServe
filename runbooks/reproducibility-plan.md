@@ -19,6 +19,8 @@ Expected result:
 - 130 demo users exist
 - demo-user passwords are temporary
 - Moodle OIDC login is configured
+- root-domain welcome page loads
+- Keycloak admin demo users are Moodle site admins
 
 The old VPS is not proof.
 

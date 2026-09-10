@@ -11,6 +11,7 @@ Internet
   |
   v
 Nginx
+  |-- example.edu        -> static welcome page
   |-- moodle.example.edu -> Moodle PHP-FPM
   |-- iam.example.edu    -> Keycloak
 
@@ -34,6 +35,7 @@ Moodle, Keycloak, and PostgreSQL stay inside Docker networks.
 
 Certbot obtains Let's Encrypt certificates for:
 
+- root domain
 - Moodle domain
 - Keycloak domain
 
@@ -44,6 +46,8 @@ Nginx serves HTTPS using those certificates.
 Moodle keeps one local admin for bootstrap and emergency access.
 
 Normal demo users log in through Keycloak.
+
+Demo users with `moodleRole: admin` are also added as Moodle site admins.
 
 ## Persistence
 

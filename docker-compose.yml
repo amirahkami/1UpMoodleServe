@@ -83,6 +83,7 @@ services:
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ${NGINX_CONF_DIR:-./docker/nginx/http.d}:/etc/nginx/conf.d:ro
+      - ./docker/homepage:/var/www/homepage:ro
       - moodle_code:/var/www/html:ro
       - moodle_data:/var/moodledata:ro
       - certbot_conf:/etc/letsencrypt:ro

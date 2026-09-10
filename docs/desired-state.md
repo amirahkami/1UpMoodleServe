@@ -44,6 +44,14 @@ KEYCLOAK_SEED_USER_TEMP_PASSWORD
 
 Keycloak forces users to change it on first login.
 
+The same user file is also read by:
+
+```text
+scripts/moodle-roles.sh
+```
+
+Users with `moodleRole: admin` become Moodle site admins.
+
 ## Moodle OIDC
 
 File:

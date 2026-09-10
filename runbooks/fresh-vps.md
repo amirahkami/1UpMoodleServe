@@ -50,6 +50,7 @@ The installer will:
 - disable root SSH after confirmation
 - deploy Moodle, Keycloak, PostgreSQL, Nginx, and HTTPS
 - apply Keycloak users and Moodle OIDC
+- apply Moodle site-admin role sync
 - verify the platform
 
 ## 4. Final Check
@@ -57,6 +58,7 @@ The installer will:
 Open:
 
 ```text
+https://your-domain
 https://moodle.your-domain
 https://iam.your-domain
 ```

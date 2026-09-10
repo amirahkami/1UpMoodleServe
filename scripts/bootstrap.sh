@@ -250,11 +250,16 @@ deploy_app() {
     section "Apply Moodle OIDC desired state"
     bash scripts/moodle-oidc.sh apply
 
+    section "Apply Moodle role desired state"
+    bash scripts/moodle-roles.sh apply
+
     section "Verify platform state"
     bash scripts/verify-keycloak-realm.sh
     bash scripts/moodle-oidc.sh verify
+    bash scripts/moodle-roles.sh verify
 
     ok "Bootstrap complete."
+    info "Home: https://${ROOT_DOMAIN}"
     info "Moodle: https://${MOODLE_DOMAIN}"
     info "Keycloak: https://${KEYCLOAK_DOMAIN}"
 }

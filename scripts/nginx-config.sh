@@ -64,10 +64,12 @@ env_get() {
 }
 
 load_env() {
+    ROOT_DOMAIN="$(env_get ROOT_DOMAIN)"
     MOODLE_DOMAIN="$(env_get MOODLE_DOMAIN)"
     KEYCLOAK_DOMAIN="$(env_get KEYCLOAK_DOMAIN)"
     LETSENCRYPT_CERT_NAME="$(env_get LETSENCRYPT_CERT_NAME "${DEFAULT_CERT_NAME}")"
 
+    [[ -n "${ROOT_DOMAIN}" ]] || die "ROOT_DOMAIN is missing in ${ENV_FILE}."
     [[ -n "${MOODLE_DOMAIN}" ]] || die "MOODLE_DOMAIN is missing in ${ENV_FILE}."
     [[ -n "${KEYCLOAK_DOMAIN}" ]] || die "KEYCLOAK_DOMAIN is missing in ${ENV_FILE}."
     [[ -n "${LETSENCRYPT_CERT_NAME}" ]] || die "LETSENCRYPT_CERT_NAME is missing in ${ENV_FILE}."
@@ -83,10 +85,12 @@ render_template() {
     local output="$2"
 
     awk \
+        -v root_domain="${ROOT_DOMAIN}" \
         -v moodle_domain="${MOODLE_DOMAIN}" \
         -v keycloak_domain="${KEYCLOAK_DOMAIN}" \
         -v cert_name="${LETSENCRYPT_CERT_NAME}" '
             {
+                gsub(/%%ROOT_DOMAIN%%/, root_domain)
                 gsub(/%%MOODLE_DOMAIN%%/, moodle_domain)
                 gsub(/%%KEYCLOAK_DOMAIN%%/, keycloak_domain)
                 gsub(/%%LETSENCRYPT_CERT_NAME%%/, cert_name)

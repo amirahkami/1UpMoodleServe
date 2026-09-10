@@ -10,6 +10,7 @@ The repo is the product. A VPS is only a disposable target.
 - Docker Compose stack
 - Moodle over HTTPS
 - Keycloak over HTTPS
+- root-domain welcome page over HTTPS
 - PostgreSQL persistence
 - Keycloak realm, roles, groups, and 130 demo users
 - Moodle login connected to Keycloak
@@ -74,6 +75,8 @@ KEYCLOAK_SEED_USER_TEMP_PASSWORD
 ```
 
 Keycloak forces password change on first login.
+
+Users with `moodleRole: admin` are made Moodle site admins by `scripts/moodle-roles.sh`.
 
 ## Important Files
 
