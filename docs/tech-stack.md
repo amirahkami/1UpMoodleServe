@@ -9,7 +9,7 @@ Locked technical choices for this project.
 - Operating system: Ubuntu Server 24.04 LTS
 - Deployment scope: one university per VM
 - Moodle scope: one Moodle instance per VM
-- Environment scope: production only
+- Deployment scope: one configured environment per VM
 
 ## Runtime Model
 

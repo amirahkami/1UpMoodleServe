@@ -1,7 +1,5 @@
 # Architecture
 
-## Purpose
-
 This repo deploys one Moodle platform for one university on one VPS.
 
 The VPS is replaceable. The repo is the source of truth.
@@ -13,13 +11,15 @@ Internet
   |
   v
 Nginx
-  |-- moodle.unrealuni.xyz -> Moodle PHP-FPM
-  |-- iam.unrealuni.xyz    -> Keycloak
+  |-- moodle.example.edu -> Moodle PHP-FPM
+  |-- iam.example.edu    -> Keycloak
 
 Moodle   -> PostgreSQL
 Keycloak -> PostgreSQL
 Certbot  -> Let's Encrypt certificates
 ```
+
+The real domains are chosen during bootstrap and stored only in `.env`.
 
 ## Public Entry Point
 
@@ -28,48 +28,35 @@ Only Nginx exposes public web ports:
 - `80/tcp`
 - `443/tcp`
 
-Moodle, Keycloak, and PostgreSQL do not expose public host ports.
-
-## Internal Network
-
-Docker Compose creates internal service networking.
-
-- Moodle talks to PostgreSQL through the Docker network.
-- Keycloak talks to PostgreSQL through the Docker network.
-- Nginx talks to Moodle and Keycloak through the Docker network.
+Moodle, Keycloak, and PostgreSQL stay inside Docker networks.
 
 ## HTTPS
 
-Certbot obtains one Let's Encrypt certificate for both names:
+Certbot obtains Let's Encrypt certificates for:
 
-- `moodle.unrealuni.xyz`
-- `iam.unrealuni.xyz`
+- Moodle domain
+- Keycloak domain
 
-Nginx serves HTTPS using that certificate.
+Nginx serves HTTPS using those certificates.
 
-## Moodle Login
+## Login
 
-Moodle keeps local admin login as a backup.
+Moodle keeps one local admin for bootstrap and emergency access.
 
-Normal users can log in through Keycloak using Moodle's built-in OAuth2 support.
+Normal demo users log in through Keycloak.
 
 ## Persistence
 
 Docker named volumes hold runtime data:
 
-- `postgres_data`: PostgreSQL databases
-- `moodle_data`: Moodle file data
-- `moodle_code`: installed Moodle code
-- `certbot_conf`: certificates
-- `certbot_www`: HTTP challenge files
+- `postgres_data`
+- `moodle_data`
+- `moodle_code`
+- `certbot_conf`
+- `certbot_www`
 
 ## Generated State
 
 Generated files live under `.generated/`.
 
-`.generated/deploy.env` records current runtime mode:
-
-- HTTP bootstrap mode
-- HTTPS final mode
-
-This file contains no secrets.
+They are ignored by Git.

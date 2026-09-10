@@ -192,7 +192,9 @@ EOF
 ssh_step2() {
     section "SSH hardening step 2"
     warn "This step disables direct root SSH and allows only ${SSH_USER} on port ${SSH_PORT}."
-    confirm_exact "Have you successfully logged in with: ssh -p ${SSH_PORT} ${SSH_USER}@${SERVER_HOST} ?" "yes"
+    if [[ "${CONFIRM_DISABLE_ROOT_SSH:-}" != "yes" ]]; then
+        confirm_exact "Have you successfully logged in with: ssh -p ${SSH_PORT} ${SSH_USER}@${SERVER_HOST} ?" "yes"
+    fi
 
     backup_ssh_config
 
@@ -423,7 +425,9 @@ restrict_su() {
 
 system_hardening() {
     warn "System hardening will configure nftables. SSH must already work on port ${SSH_PORT}."
-    confirm_exact "Have you confirmed SSH access on port ${SSH_PORT}?" "yes"
+    if [[ "${CONFIRM_SSH_READY:-}" != "yes" ]]; then
+        confirm_exact "Have you confirmed SSH access on port ${SSH_PORT}?" "yes"
+    fi
 
     configure_unattended_upgrades
     configure_sysctl

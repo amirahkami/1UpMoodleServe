@@ -1,7 +1,7 @@
 {
   "issuer": {
-    "name": "UnrealUni Keycloak",
-    "loginName": "UnrealUni Login",
+    "name": "University Keycloak",
+    "loginName": "University Login",
     "scopes": "openid profile email",
     "requireConfirmation": false,
     "allowAccountCreation": true

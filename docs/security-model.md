@@ -2,17 +2,17 @@
 
 ## SSH
 
-- Create a sudo user named `underroot`.
-- Move SSH from port `22` to port `44422`.
+- Create a sudo user chosen by the admin.
+- Move SSH from port `22` to the port chosen by the admin.
 - Keep password SSH enabled by project decision.
-- Disable direct root SSH only after `underroot` login is confirmed.
-- Restrict SSH login to `underroot`.
+- Disable direct root SSH only after the new SSH login is confirmed.
+- Restrict SSH login to the chosen admin user.
 
 SSH hardening is split into two steps to avoid lockout:
 
 ```bash
 sudo bash scripts/harden.sh ssh-step1
-ssh -p 44422 underroot@<server-ip>
+ssh -p <ssh-port> <ssh-user>@<server-ip>
 SERVER_HOST=<server-ip> sudo bash scripts/harden.sh ssh-step2
 ```
 
@@ -24,7 +24,7 @@ Inbound policy is default-deny.
 
 Allowed inbound ports:
 
-- `44422/tcp` for SSH
+- chosen SSH port
 - `80/tcp` for HTTP
 - `443/tcp` for HTTPS
 
@@ -42,7 +42,7 @@ After nftables reloads with `flush ruleset`, Docker is restarted so Docker recre
 
 Fail2ban is required because password SSH remains enabled.
 
-It protects SSH on port `44422`.
+It protects SSH on the chosen SSH port.
 
 ## HTTPS
 

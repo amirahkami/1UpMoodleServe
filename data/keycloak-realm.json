@@ -1,6 +1,6 @@
 {
   "realm": {
-    "name": "unrealuni",
+    "name": "university",
     "enabled": true,
     "registrationAllowed": false,
     "resetPasswordAllowed": true,
@@ -41,9 +41,8 @@
     "Finance"
   ],
   "seed": {
-    "emailDomain": "unrealuni.xyz",
-    "passwordPattern": "{username}@unrealuni",
-    "temporaryPassword": false
+    "emailDomain": "example.edu",
+    "temporaryPassword": true
   },
   "protocolMappers": [
     {

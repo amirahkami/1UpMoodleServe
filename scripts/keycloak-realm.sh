@@ -52,6 +52,7 @@ Secrets still come from .env:
   KEYCLOAK_ADMIN
   KEYCLOAK_ADMIN_PASSWORD
   KEYCLOAK_MOODLE_CLIENT_SECRET
+  KEYCLOAK_SEED_USER_TEMP_PASSWORD
 EOF
 }
 
@@ -109,7 +110,6 @@ validate_data() {
         (.groups | type == "array" and length > 0) and
         (.protocolMappers | type == "array" and length > 0) and
         (.seed.emailDomain | type == "string" and length > 0) and
-        (.seed.passwordPattern | type == "string" and contains("{username}")) and
         (.seed.temporaryPassword | type == "boolean")
     ' "${KEYCLOAK_REALM_FILE}" >/dev/null || die "Invalid ${KEYCLOAK_REALM_FILE}."
 
@@ -133,20 +133,22 @@ load_env() {
     MOODLE_DOMAIN="$(env_get MOODLE_DOMAIN)"
     MOODLE_OAUTH2_CALLBACK_PATH="$(env_get MOODLE_OAUTH2_CALLBACK_PATH "/admin/oauth2callback.php")"
 
-    KEYCLOAK_REALM="$(json_get "${KEYCLOAK_REALM_FILE}" '.realm.name')"
+    KEYCLOAK_REALM="$(env_get KEYCLOAK_REALM "$(json_get "${KEYCLOAK_REALM_FILE}" '.realm.name')")"
     KEYCLOAK_MOODLE_CLIENT_ID="$(json_get "${KEYCLOAK_REALM_FILE}" '.client.clientId')"
-    KEYCLOAK_SEED_EMAIL_DOMAIN="$(json_get "${KEYCLOAK_REALM_FILE}" '.seed.emailDomain')"
-    KEYCLOAK_SEED_PASSWORD_PATTERN="$(json_get "${KEYCLOAK_REALM_FILE}" '.seed.passwordPattern')"
+    KEYCLOAK_SEED_EMAIL_DOMAIN="$(env_get KEYCLOAK_SEED_EMAIL_DOMAIN "$(json_get "${KEYCLOAK_REALM_FILE}" '.seed.emailDomain')")"
+    KEYCLOAK_SEED_USER_TEMP_PASSWORD="$(env_get KEYCLOAK_SEED_USER_TEMP_PASSWORD)"
     KEYCLOAK_SEED_PASSWORD_TEMPORARY="$(json_get "${KEYCLOAK_REALM_FILE}" '.seed.temporaryPassword')"
     EXPECTED_USER_COUNT="$(jq -r '.users | length' "${KEYCLOAK_USERS_FILE}")"
 
     [[ -n "${KEYCLOAK_ADMIN}" ]] || die "KEYCLOAK_ADMIN is required in ${ENV_FILE}."
     [[ -n "${KEYCLOAK_ADMIN_PASSWORD}" ]] || die "KEYCLOAK_ADMIN_PASSWORD is required in ${ENV_FILE}."
     [[ -n "${KEYCLOAK_MOODLE_CLIENT_SECRET}" ]] || die "KEYCLOAK_MOODLE_CLIENT_SECRET is required in ${ENV_FILE}."
+    [[ -n "${KEYCLOAK_SEED_USER_TEMP_PASSWORD}" ]] || die "KEYCLOAK_SEED_USER_TEMP_PASSWORD is required in ${ENV_FILE}."
     [[ -n "${KEYCLOAK_DOMAIN}" ]] || die "KEYCLOAK_DOMAIN is required in ${ENV_FILE}."
     [[ -n "${MOODLE_DOMAIN}" ]] || die "MOODLE_DOMAIN is required in ${ENV_FILE}."
 
     [[ "${KEYCLOAK_MOODLE_CLIENT_SECRET}" != *CHANGE_ME* ]] || die "KEYCLOAK_MOODLE_CLIENT_SECRET still contains CHANGE_ME."
+    [[ "${KEYCLOAK_SEED_USER_TEMP_PASSWORD}" != *CHANGE_ME* ]] || die "KEYCLOAK_SEED_USER_TEMP_PASSWORD still contains CHANGE_ME."
 
     MOODLE_BASE_URL="https://${MOODLE_DOMAIN}"
     MOODLE_REDIRECT_URI="${MOODLE_BASE_URL}${MOODLE_OAUTH2_CALLBACK_PATH}"
@@ -229,8 +231,10 @@ realm_exists() {
 }
 
 realm_payload() {
-    jq '{
-        realm: .realm.name,
+    jq \
+        --arg realm "${KEYCLOAK_REALM}" \
+        '{
+        realm: $realm,
         enabled: .realm.enabled,
         registrationAllowed: .realm.registrationAllowed,
         resetPasswordAllowed: .realm.resetPasswordAllowed,
@@ -406,20 +410,7 @@ ensure_roles_and_groups() {
 }
 
 render_seed_password() {
-    local username="$1"
-    local first_name="$2"
-    local last_name="$3"
-    local password first_lower last_lower
-
-    first_lower="${first_name,,}"
-    last_lower="${last_name,,}"
-    password="${KEYCLOAK_SEED_PASSWORD_PATTERN}"
-    password="${password//\{username\}/${username}}"
-    password="${password//\{firstName\}/${first_name}}"
-    password="${password//\{lastName\}/${last_name}}"
-    password="${password//\{firstname\}/${first_lower}}"
-    password="${password//\{lastname\}/${last_lower}}"
-    printf '%s\n' "${password}"
+    printf '%s\n' "${KEYCLOAK_SEED_USER_TEMP_PASSWORD}"
 }
 
 rest_user_id() {
@@ -629,8 +620,8 @@ show_summary() {
     info "Issuer: https://${KEYCLOAK_DOMAIN}/realms/${KEYCLOAK_REALM}"
     info "Moodle redirect URI: ${MOODLE_REDIRECT_URI}"
     info "Seed user email domain: ${KEYCLOAK_SEED_EMAIL_DOMAIN}"
-    info "Seed password pattern: ${KEYCLOAK_SEED_PASSWORD_PATTERN}"
-    info "Seed passwords temporary: ${KEYCLOAK_SEED_PASSWORD_TEMPORARY}"
+    info "Seed user passwords come from KEYCLOAK_SEED_USER_TEMP_PASSWORD in ${ENV_FILE}."
+    info "Seed user passwords temporary: ${KEYCLOAK_SEED_PASSWORD_TEMPORARY}"
 }
 
 load_and_validate() {

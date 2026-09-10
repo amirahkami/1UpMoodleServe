@@ -106,7 +106,6 @@ validate_data() {
         (.groups | type == "array" and length > 0) and
         (.protocolMappers | type == "array" and length > 0) and
         (.seed.emailDomain | type == "string" and length > 0) and
-        (.seed.passwordPattern | type == "string" and contains("{username}")) and
         (.seed.temporaryPassword | type == "boolean")
     ' "${KEYCLOAK_REALM_FILE}" >/dev/null 2>&1; then
         pass "Realm JSON schema is valid"
@@ -137,9 +136,9 @@ load_env() {
     MOODLE_DOMAIN="$(env_get MOODLE_DOMAIN)"
     MOODLE_OAUTH2_CALLBACK_PATH="$(env_get MOODLE_OAUTH2_CALLBACK_PATH "/admin/oauth2callback.php")"
 
-    KEYCLOAK_REALM="$(json_get "${KEYCLOAK_REALM_FILE}" '.realm.name')"
+    KEYCLOAK_REALM="$(env_get KEYCLOAK_REALM "$(json_get "${KEYCLOAK_REALM_FILE}" '.realm.name')")"
     KEYCLOAK_MOODLE_CLIENT_ID="$(json_get "${KEYCLOAK_REALM_FILE}" '.client.clientId')"
-    KEYCLOAK_SEED_EMAIL_DOMAIN="$(json_get "${KEYCLOAK_REALM_FILE}" '.seed.emailDomain')"
+    KEYCLOAK_SEED_EMAIL_DOMAIN="$(env_get KEYCLOAK_SEED_EMAIL_DOMAIN "$(json_get "${KEYCLOAK_REALM_FILE}" '.seed.emailDomain')")"
     EXPECTED_USER_COUNT="$(jq -r '.users | length' "${KEYCLOAK_USERS_FILE}")"
     EXPECTED_GROUP_COUNT="$(jq -r '.groups | length' "${KEYCLOAK_REALM_FILE}")"
 

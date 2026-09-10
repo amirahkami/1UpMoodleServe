@@ -101,11 +101,11 @@ validate_data() {
 }
 
 load_env() {
-    KEYCLOAK_REALM="$(json_get "${KEYCLOAK_REALM_FILE}" '.realm.name')"
-    KEYCLOAK_DOMAIN="$(env_get KEYCLOAK_DOMAIN "iam.unrealuni.xyz")"
+    KEYCLOAK_REALM="$(env_get KEYCLOAK_REALM "$(json_get "${KEYCLOAK_REALM_FILE}" '.realm.name')")"
+    KEYCLOAK_DOMAIN="$(env_get KEYCLOAK_DOMAIN "iam.example.edu")"
     KEYCLOAK_MOODLE_CLIENT_ID="$(json_get "${KEYCLOAK_REALM_FILE}" '.client.clientId')"
     KEYCLOAK_MOODLE_CLIENT_SECRET="$(env_get KEYCLOAK_MOODLE_CLIENT_SECRET)"
-    KEYCLOAK_SEED_EMAIL_DOMAIN="$(json_get "${KEYCLOAK_REALM_FILE}" '.seed.emailDomain')"
+    KEYCLOAK_SEED_EMAIL_DOMAIN="$(env_get KEYCLOAK_SEED_EMAIL_DOMAIN "$(json_get "${KEYCLOAK_REALM_FILE}" '.seed.emailDomain')")"
     MOODLE_DOMAIN="$(env_get MOODLE_DOMAIN)"
     MOODLE_OAUTH2_ISSUER_NAME="$(env_get MOODLE_OAUTH2_ISSUER_NAME "$(json_get "${MOODLE_OIDC_FILE}" '.issuer.name')")"
     MOODLE_OAUTH2_LOGIN_NAME="$(env_get MOODLE_OAUTH2_LOGIN_NAME "$(json_get "${MOODLE_OIDC_FILE}" '.issuer.loginName')")"

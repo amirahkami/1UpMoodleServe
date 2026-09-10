@@ -1,115 +1,93 @@
 # 1UpMoodleServe
 
-Infrastructure-as-code style deployment kit for a small-university Moodle platform.
+Repeatable deployment repo for a small-university Moodle platform.
 
-The repo is the product. A VPS is only a disposable target used to prove that this repo can deploy the full stack from zero.
+The repo is the product. A VPS is only a disposable target.
 
 ## Target Result
 
-- fresh Ubuntu 24.04 VPS
-- hardened SSH and firewall
-- Docker Engine and Docker Compose
-- Moodle online over HTTPS
-- Keycloak online over HTTPS
+- Ubuntu 24.04 VPS
+- Docker Compose stack
+- Moodle over HTTPS
+- Keycloak over HTTPS
 - PostgreSQL persistence
-- Keycloak realm, roles, groups, users, and Moodle OIDC configured from repo state
+- Keycloak realm, roles, groups, and 130 demo users
+- Moodle login connected to Keycloak
+- basic SSH/firewall hardening
 
-## Stack
+## Main Workflow
 
-- Moodle 5.2
-- PHP 8.3
-- PostgreSQL 18
-- Keycloak 26.7.2
-- Nginx
-- Certbot
-- Docker Compose
-
-## Default Domains
-
-- Moodle: `moodle.unrealuni.xyz`
-- Keycloak: `iam.unrealuni.xyz`
-
-For another university or server, change the domain values in `.env`.
-
-## Fresh VPS Flow
-
-Root phase:
+On a fresh VPS:
 
 ```bash
-sudo bash scripts/install-fresh.sh root
-```
-
-Verify the new SSH user from another terminal:
-
-```bash
-ssh -p 44422 underroot@<server-ip>
-```
-
-Disable direct root SSH:
-
-```bash
-SERVER_HOST=<server-ip> sudo bash scripts/harden.sh ssh-step2
-```
-
-Application phase:
-
-```bash
+apt update
+apt install git -y
+git clone https://github.com/<owner>/<repo>.git /opt/1upmoodleserve
 cd /opt/1upmoodleserve
-bash scripts/install-fresh.sh app
+bash scripts/bootstrap.sh
 ```
 
-Verification:
+The installer asks for:
 
-```bash
-bash scripts/install-fresh.sh verify
-sudo bash scripts/verify-server.sh
+- domain names
+- VPS IP
+- SSH user, port, and password
+- Moodle local admin account
+- Keycloak realm name
+- demo-user temporary password
+- Let's Encrypt email
+
+The installer creates `.env` automatically.
+
+## Public Data Policy
+
+The public repo may contain:
+
+- scripts
+- Docker files
+- safe examples
+- fake demo users
+- realm structure
+- docs
+
+The public repo must not contain:
+
+- `.env`
+- real passwords
+- tokens
+- private keys
+- real VPS IPs
+- local machine paths
+- disposable VPS notes
+- public working password rules
+
+## Keycloak Users
+
+The 130 users in `data/keycloak-users.json` are demo university users.
+
+They are created during bootstrap.
+
+They use one temporary password from `.env`:
+
+```text
+KEYCLOAK_SEED_USER_TEMP_PASSWORD
 ```
+
+Keycloak forces password change on first login.
 
 ## Important Files
 
 ```text
-data/        desired platform state
+data/        Keycloak and Moodle desired state
 docker/      container images and service config
 scripts/     automation
 docs/        explanations
-runbooks/    step-by-step operations
-MEMORY.md    session handoff
+runbooks/    operations notes
+.env.example safe public template
+.env         private VPS config, never committed
 ```
 
-## Desired State
-
-Non-secret platform state is committed under `data/`:
-
-```text
-data/keycloak-realm.json
-data/keycloak-users.json
-data/moodle-oidc.json
-```
-
-Seeded user passwords use:
-
-```text
-{username}@unrealuni
-```
-
-Example:
-
-```text
-sara.shirazi / sara.shirazi@unrealuni
-```
-
-## Secrets
-
-Real secrets must never be committed.
-
-Use:
-
-```text
-.env.example  committed placeholders
-.env          real VPS-only values
-```
-
-## Documentation
+## Docs
 
 - [Project Scope](PROJECT.md)
 - [Architecture](docs/architecture.md)
@@ -118,5 +96,3 @@ Use:
 - [Desired State](docs/desired-state.md)
 - [Fresh VPS Runbook](runbooks/fresh-vps.md)
 - [Troubleshooting](runbooks/troubleshooting.md)
-
-Read [MEMORY.md](MEMORY.md) before resuming work in a new session.

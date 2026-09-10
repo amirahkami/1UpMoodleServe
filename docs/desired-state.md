@@ -1,6 +1,6 @@
 # Desired State
 
-The `data/` directory contains non-secret platform state.
+The `data/` directory contains public, non-secret platform state.
 
 Scripts read these files and apply them to live services.
 
@@ -14,25 +14,15 @@ data/keycloak-realm.json
 
 Defines:
 
-- realm name
+- default realm name
 - Moodle client
 - realm roles
 - Moodle client roles
 - groups
 - protocol mappers
-- seed password rule
+- seed-user policy
 
-Current realm:
-
-```text
-unrealuni
-```
-
-Current client:
-
-```text
-moodle
-```
+The admin can override the realm name during bootstrap.
 
 ## Keycloak Users
 
@@ -42,25 +32,17 @@ File:
 data/keycloak-users.json
 ```
 
-Defines seeded simulation users.
+Defines 130 fake demo university users.
 
-Current count:
+Passwords are not stored in public data.
 
-```text
-130
-```
-
-Seed password pattern:
+The temporary demo-user password comes from `.env`:
 
 ```text
-{username}@unrealuni
+KEYCLOAK_SEED_USER_TEMP_PASSWORD
 ```
 
-Example:
-
-```text
-sara.shirazi / sara.shirazi@unrealuni
-```
+Keycloak forces users to change it on first login.
 
 ## Moodle OIDC
 
@@ -70,7 +52,7 @@ File:
 data/moodle-oidc.json
 ```
 
-Defines Moodle's built-in OAuth2 issuer settings:
+Defines Moodle's OAuth2 issuer settings:
 
 - issuer name
 - login button name
@@ -78,34 +60,9 @@ Defines Moodle's built-in OAuth2 issuer settings:
 - account creation policy
 - field mappings
 
-Current login button:
-
-```text
-UnrealUni Login
-```
-
-## Secrets
-
-Desired-state files do not contain secrets.
-
-Secrets come from `.env` on the VPS.
-
-Example:
-
-```text
-KEYCLOAK_MOODLE_CLIENT_SECRET
-```
-
 ## Apply
 
 ```bash
 bash scripts/keycloak-realm.sh apply
 bash scripts/moodle-oidc.sh apply
-```
-
-## Verify
-
-```bash
-bash scripts/verify-keycloak-realm.sh
-bash scripts/moodle-oidc.sh verify
 ```

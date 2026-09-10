@@ -67,7 +67,7 @@ Fix now captured in repo:
 
 - Nginx Moodle root is `/var/www/html/public`
 
-## underroot Cannot Use Docker
+## SSH User Cannot Use Docker
 
 Symptom:
 
@@ -77,17 +77,17 @@ permission denied while trying to connect to Docker socket
 
 Cause:
 
-`underroot` was not in the `docker` group, or the SSH session was created before group membership changed.
+The SSH user was not in the `docker` group, or the SSH session was created before group membership changed.
 
 Fix:
 
 ```bash
-sudo usermod -aG docker underroot
+sudo usermod -aG docker <ssh-user>
 ```
 
 Then log out and back in.
 
-This is now handled by `scripts/harden.sh ssh-step1` when the Docker group exists.
+This is handled by `scripts/harden.sh ssh-step1` when the Docker group exists.
 
 ## .env Placeholder False Positive
 
@@ -110,7 +110,7 @@ Fix now captured in repo:
 Symptom:
 
 ```text
-SSH to port 44422 hangs or is refused from one IP
+SSH to the configured port hangs or is refused from one IP
 ```
 
 Possible cause:

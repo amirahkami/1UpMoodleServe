@@ -1,88 +1,68 @@
-# Fresh VPS Deployment
+# Fresh VPS Runbook
 
-This is the target reproducibility path for a new Ubuntu 24.04 VPS.
+Target: Ubuntu 24.04 VPS.
 
-## Inputs
+## 1. Point DNS
 
-- Ubuntu 24.04 VPS
-- DNS records point to the VPS IP
-- Cloudflare records are DNS-only during setup
-- repo is available on the VPS under `/opt/1upmoodleserve`
-- real secrets are in `/opt/1upmoodleserve/.env`
-- desired platform state is in `data/`
+In Cloudflare, point these records to the VPS IP:
 
-## Rule
-
-If a manual step is needed, record it. If it matters, automate it in the repo.
-
-## 1. Root Phase
-
-Run from the repo on the VPS:
-
-```bash
-sudo bash scripts/install-fresh.sh root
+```text
+example.edu
+moodle.example.edu
+iam.example.edu
 ```
 
-This provisions the server, creates `underroot`, moves SSH to port `44422`, and applies base hardening.
+Use your real domain, not `example.edu`.
 
-## 2. Verify SSH
+## 2. Clone Repo
 
-From a new terminal:
+SSH as root:
 
 ```bash
-ssh -p 44422 underroot@<server-ip>
+ssh root@<server-ip>
 ```
 
-Do not continue until this works.
-
-## 3. Disable Root SSH
+Then:
 
 ```bash
-SERVER_HOST=<server-ip> sudo bash scripts/harden.sh ssh-step2
-```
-
-## 4. Create `.env`
-
-On the VPS:
-
-```bash
+apt update
+apt install git -y
+git clone https://github.com/<owner>/<repo>.git /opt/1upmoodleserve
 cd /opt/1upmoodleserve
-cp .env.example .env
-chmod 600 .env
 ```
 
-Fill all real values. Do not commit `.env`.
-
-## 5. Application Phase
-
-Run as `underroot` from `/opt/1upmoodleserve`:
-
-```bash
-bash scripts/install-fresh.sh app
-```
-
-This deploys the stack, issues HTTPS certificates, applies Keycloak state, and applies Moodle OIDC.
-
-## 6. Verify
+## 3. Bootstrap
 
 Run:
 
 ```bash
-bash scripts/install-fresh.sh verify
-sudo bash scripts/verify-server.sh
+bash scripts/bootstrap.sh
 ```
 
-## Expected Result
+The installer will:
 
-- Moodle is reachable over HTTPS.
-- Keycloak is reachable over HTTPS.
-- The Keycloak realm and Moodle client exist.
-- Moodle shows the configured Keycloak OAuth2 login option.
-- Local Moodle admin login remains available as a backup.
-- Seeded users can log in with the deterministic password pattern from `data/keycloak-realm.json`.
+- install required server packages
+- install Docker
+- ask setup questions
+- create `.env`
+- configure SSH user, port, and password
+- ask you to test the new SSH login
+- disable root SSH after confirmation
+- deploy Moodle, Keycloak, PostgreSQL, Nginx, and HTTPS
+- apply Keycloak users and Moodle OIDC
+- verify the platform
 
-## State Files
+## 4. Final Check
 
-- `.env` is operator-owned input and must not be rewritten by deploy scripts.
-- `.generated/deploy.env` is generated runtime state and may be rewritten by deploy scripts.
-- `.generated/deploy.env` contains no secrets.
+Open:
+
+```text
+https://moodle.your-domain
+https://iam.your-domain
+```
+
+## Important
+
+`.env` is private VPS config.
+
+Never commit `.env`.

@@ -199,7 +199,7 @@ main() {
 
     echo ""
     ok "Provisioning complete."
-    info "Next step after repository setup: clone/pull the project into ${APP_DIR}."
+    info "Continue with the bootstrap installer from the project directory."
 }
 
 main "$@"
